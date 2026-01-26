@@ -10,13 +10,43 @@ import os
 
 import ssl
 
-PORT = 8000
+PORT = 8085
 DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 
 class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=DIRECTORY, **kwargs)
     
+    
+    def do_POST(self):
+        # Proxy for trigger scrape to avoid Mixed Content (HTTPS -> HTTP)
+        if self.path.startswith('/api/trigger-scrape'):
+            import urllib.request
+            import urllib.error
+            
+            # Target URL (internal docker service)
+            target_url = 'http://scraper-service:8082/api/scraper/trigger/linkedin?maxResults=10&maxJobAgeDays=1'
+            
+            try:
+                print(f"Proxying POST to: {target_url}")
+                req = urllib.request.Request(target_url, method='POST')
+                with urllib.request.urlopen(req) as response:
+                    self.send_response(response.status)
+                    for header, value in response.getheaders():
+                        self.send_header(header, value)
+                    self.end_headers()
+                    self.wfile.write(response.read())
+            except urllib.error.HTTPError as e:
+                self.send_response(e.code)
+                self.end_headers()
+            except Exception as e:
+                print(f"Proxy Error: {e}")
+                self.send_response(500)
+                self.end_headers()
+        else:
+            # For other POST requests (if any), default behavior (error usually)
+            self.send_error(404, "Not Found")
+
     def end_headers(self):
         # Add CORS headers to allow API requests
         self.send_header('Access-Control-Allow-Origin', '*')

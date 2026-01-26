@@ -46,9 +46,9 @@ async function triggerScrape() {
     btn.disabled = true;
 
     try {
-        // Call Scraper Service directly (exposed on 8082 via Docker)
-        // Note: In local dev without Docker custom networking, this hits localhost:8082
-        const response = await fetch('http://localhost:8082/api/scraper/trigger/linkedin?maxResults=10&maxJobAgeDays=1', {
+        // Call local proxy (relative URL) to avoid Mixed Content error
+        // Matches do_POST in server.py which forwards to scraper-service
+        const response = await fetch('/api/trigger-scrape', {
             method: 'POST'
         });
 

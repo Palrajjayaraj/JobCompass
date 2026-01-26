@@ -22,6 +22,10 @@
                     <h1>JobCompass</h1>
                 </div>
                 <div class="header-stats">
+                    <button class="btn-secondary" id="triggerScrapeBtn"
+                        style="margin-right: 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        <span>⚡</span> Trigger Scrape
+                    </button>
                     <div class="stat-card">
                         <div class="stat-value" id="totalJobs">0</div>
                         <div class="stat-label">Total Jobs</div>
@@ -66,17 +70,11 @@
                     </div>
                 </div>
 
-                <div class="search-actions">
-                    <button class="btn-primary" id="refreshBtn">
-                        <span>🔄</span> Refresh Jobs
-                    </button>
-
-                    <button class="btn-secondary" id="triggerScrapeBtn"
-                        style="margin-left: 10px; background: var(--accent-purple); color: white; border: none;">
-                        <span>⚡</span> Trigger Scrape
-                    </button>
-                </div>
+                <button class="btn-primary" id="refreshBtn">
+                    <span>🔄</span> Refresh Jobs
+                </button>
             </div>
+        </div>
         </div>
     </section>
 
