@@ -63,6 +63,8 @@ services:
     depends_on:
       - kafka
       - postgres
+    ports:
+      - "8081:8081" # Expose API to host for verification
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobcompass
