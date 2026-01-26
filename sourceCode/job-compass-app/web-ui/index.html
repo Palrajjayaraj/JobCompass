@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobCompass - Discover Your Next Opportunity</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🧭</div>
+                    <h1>JobCompass</h1>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalJobs">0</div>
+                        <div class="stat-label">Total Jobs</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="recentJobs">0</div>
+                        <div class="stat-label">This Week</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Search and Filters -->
+    <section class="search-section">
+        <div class="container">
+            <div class="search-container">
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search jobs by title, company, or location...">
+                </div>
+
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="sourceFilter">Source</label>
+                        <select id="sourceFilter">
+                            <option value="">All Sources</option>
+                            <option value="LINKEDIN">LinkedIn</option>
+                            <option value="GLASSDOOR">Glassdoor</option>
+                            <option value="INDEED">Indeed</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="daysFilter">Posted</label>
+                        <select id="daysFilter">
+                            <option value="30">Last 30 days</option>
+                            <option value="7" selected>Last 7 days</option>
+                            <option value="3">Last 3 days</option>
+                            <option value="1">Today</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="search-actions">
+                    <button class="btn-primary" id="refreshBtn">
+                        <span>🔄</span> Refresh Jobs
+                    </button>
+
+                    <button class="btn-secondary" id="triggerScrapeBtn"
+                        style="margin-left: 10px; background: var(--accent-purple); color: white; border: none;">
+                        <span>⚡</span> Trigger Scrape
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Jobs Grid -->
+    <section class="jobs-section">
+        <div class="container">
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-state">
+                <div class="loader"></div>
+                <p>Discovering amazing opportunities...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="error-state" style="display: none;">
+                <div class="error-icon">⚠️</div>
+                <h3>Oops! Something went wrong</h3>
+                <p id="errorMessage">Unable to load jobs. Please check if the storage service is running.</p>
+                <button class="btn-primary" onclick="loadJobs()">Try Again</button>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-icon">📭</div>
+                <h3>No jobs found</h3>
+                <p>Try adjusting your filters or check back later for new opportunities.</p>
+            </div>
+
+            <!-- Jobs Grid -->
+            <div id="jobsGrid" class="jobs-grid"></div>
+        </div>
+    </section>
+
+    <!-- Job Detail Modal -->
+    <div id="jobModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <div id="jobDetailContent"></div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

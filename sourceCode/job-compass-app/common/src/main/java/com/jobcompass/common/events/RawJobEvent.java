@@ -23,6 +23,7 @@ public class RawJobEvent {
     private String title; // "Senior Java Developer"
     private String company; // "Google"
     private String location; // "San Francisco, CA"
+    private String description; // Full job description text
     private String url; // Job posting URL
     private String postedDate; // "2 days ago" (raw text from site)
     private LocalDateTime scrapedAt; // When we scraped this job
