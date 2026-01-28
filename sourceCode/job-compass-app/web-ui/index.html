@@ -87,6 +87,15 @@
                 <p>Discovering amazing opportunities...</p>
             </div>
 
+            <!-- Auth Cookie -->
+            <div>
+                <label class="block text-gray-400 mb-2 font-medium">LinkedIn Cookie (li_at) <span
+                        class="text-xs text-gray-500">(Optional - for Auth)</span></label>
+                <input type="password" id="authCookie"
+                    class="w-full bg-gray-700 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    placeholder="Paste li_at cookie here...">
+            </div>
+
             <!-- Error State -->
             <div id="errorState" class="error-state" style="display: none;">
                 <div class="error-icon">⚠️</div>
@@ -115,7 +124,257 @@
         </div>
     </div>
 
-    <script src="app.js"></script>
-</body>
+    <script>
+        // API Configuration
+        const API_BASE_URL = '/api';
+
+        // State
+        let allJobs = [];
+        let filteredJobs = [];
+
+        // DOM Elements (will be initialized in DOMContentLoaded)
+        let jobsGrid, loadingState, errorState, emptyState, searchInput, sourceFilter, daysFilter, refreshBtn, totalJobsEl, recentJobsEl, modal, closeBtn;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Elements
+            jobsGrid = document.getElementById('jobsGrid');
+            loadingState = document.getElementById('loadingState');
+            errorState = document.getElementById('errorState');
+            emptyState = document.getElementById('emptyState');
+            searchInput = document.getElementById('searchInput');
+            sourceFilter = document.getElementById('sourceFilter');
+            daysFilter = document.getElementById('daysFilter');
+            refreshBtn = document.getElementById('refreshBtn');
+            totalJobsEl = document.getElementById('totalJobs');
+            recentJobsEl = document.getElementById('recentJobs');
+            modal = document.getElementById('jobModal');
+            closeBtn = document.querySelector('.close-btn');
+
+            console.log("🚀 Custom Script Loaded!");
+
+            loadJobs();
+            setupEventListeners();
+        });
+
+        // Event Listeners
+        function setupEventListeners() {
+            if (searchInput) searchInput.addEventListener('input', debounce(filterJobs, 300));
+            if (sourceFilter) sourceFilter.addEventListener('change', filterJobs);
+            if (daysFilter) daysFilter.addEventListener('change', loadJobs);
+            if (refreshBtn) refreshBtn.addEventListener('click', loadJobs);
+
+            const triggerBtn = document.getElementById('triggerScrapeBtn');
+            if (triggerBtn) {
+                console.log("Trigger Button Found!");
+                triggerBtn.addEventListener('click', triggerScrape);
+            } else {
+                console.error("Trigger Button NOT found!");
+            }
+
+            if (closeBtn) closeBtn.addEventListener('click', closeModal);
+            window.addEventListener('click', (e) => {
+                if (e.target === modal) closeModal();
+            });
+        }
+
+        // Trigger Manual Scrape
+        async function triggerScrape() {
+            console.log('[triggerScrape] Button clicked!');
+            const btn = document.getElementById('triggerScrapeBtn');
+            const originalText = btn.innerHTML;
+
+            const skills = ['Java', 'Spring Boot', 'GenAI', 'microservices', 'AI', 'ML'];
+            console.log('[triggerScrape] Using skills:', skills);
+
+            btn.innerHTML = '<span>⏳</span> Scraping...';
+            btn.disabled = true;
+
+            try {
+                // Read values from the DOM
+                const cookieInput = document.getElementById('authCookie')?.value || '';
+                const locationVal = 'Germany'; // Fixed location for now
+
+                // Call local proxy
+                const payload = {
+                    skills: skills,
+                    location: locationVal,
+                    maxResults: 5,
+                    maxJobAgeDays: 1,
+                    authCookie: cookieInput ? cookieInput.trim() : null
+                };
+
+                const response = await fetch('/api/trigger-scrape', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const text = await response.text(); // Expect text response now
+                    // alert(`✅ ${text}\n\nJobs will appear shortly.`);
+                    alert(`✅ Scraping started successfully!\n\nCheck back in a minute for new jobs.`);
+                    setTimeout(loadJobs, 5000);
+                } else {
+                    alert('❌ Failed to trigger scraping. Check console.');
+                }
+            } catch (error) {
+                console.error('Error triggering scrape:', error);
+                alert('⚠️ Error triggering scrape. Backend may be busy.');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        // Load Jobs
+        async function loadJobs() {
+            console.log('[loadJobs] Starting...');
+            showLoading();
+
+            const days = daysFilter ? daysFilter.value : 7;
+            const endpoint = `${API_BASE_URL}/jobs/recent?days=${days}`;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                console.error("Fetch timed out!");
+                controller.abort();
+            }, 5000);
+
+            try {
+                const response = await fetch(endpoint, { signal: controller.signal });
+                clearTimeout(timeoutId);
+
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+                allJobs = await response.json();
+                console.log('[loadJobs] Loaded:', allJobs.length);
+                filteredJobs = [...allJobs];
+
+                updateStats();
+                filterJobs();
+
+                if (allJobs.length === 0) showEmpty();
+                else showJobs();
+
+            } catch (error) {
+                console.error('[loadJobs] Error:', error);
+
+                // If it's a timeout, show a specific message but allow retrying
+                if (error.name === 'AbortError') {
+                    showError('Loading timed out. Backend is busy starting up.');
+                } else {
+                    showError(error.message);
+                }
+            }
+        }
+
+        // Filter Jobs
+        function filterJobs() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            const sourceValue = sourceFilter.value;
+
+            filteredJobs = allJobs.filter(job => {
+                const matchesSearch = !searchTerm ||
+                    job.title?.toLowerCase().includes(searchTerm) ||
+                    job.companyName?.toLowerCase().includes(searchTerm) ||
+                    job.location?.toLowerCase().includes(searchTerm);
+                const matchesSource = !sourceValue || job.source?.name === sourceValue;
+                return matchesSearch && matchesSource;
+            });
+            renderJobs();
+        }
+
+        // Render Jobs
+        function renderJobs() {
+            if (!jobsGrid) return;
+            if (filteredJobs.length === 0) {
+                showEmpty();
+                return;
+            }
+            jobsGrid.innerHTML = filteredJobs.map(job => createJobCard(job)).join('');
+            showJobs();
+        }
+
+        // Create Job Card
+        function createJobCard(job) {
+            const source = job.source?.name || 'Unknown';
+            const sourceClass = `source-${source.toLowerCase()}`;
+            const jobAge = job.jobAgeDays ? `${job.jobAgeDays}d ago` : 'Recently';
+            const salary = job.salaryRange || 'Not specified';
+            const location = job.location || 'Not specified';
+
+            return `
+                <div class="job-card" onclick="showJobDetail(${job.id})">
+                    <div class="job-header">
+                        <span class="job-source ${sourceClass}">${source}</span>
+                        <span class="job-age">${jobAge}</span>
+                    </div>
+                    <h3 class="job-title">${escapeHtml(job.title)}</h3>
+                    <div class="job-company"><span>🏢</span><span>${escapeHtml(job.companyName || 'Company')}</span></div>
+                    <div class="job-details">
+                        <div class="job-detail"><span>📍</span><span>${escapeHtml(location)}</span></div>
+                        <div class="job-detail"><span>💰</span><span>${escapeHtml(salary)}</span></div>
+                    </div>
+                    <div class="job-footer">
+                        <button class="view-details-btn" onclick="event.stopPropagation(); showJobDetail(${job.id})">View Details →</button>
+                    </div>
+                </div>`;
+        }
+
+        // Show Details (Abbreviated for brevity in inline script)
+        async function showJobDetail(jobId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`);
+                if (!response.ok) throw new Error('Failed to load details');
+                const job = await response.json();
+
+                // Populate modal (simplified)
+                const content = document.getElementById('jobDetailContent');
+                content.innerHTML = `<h2>${escapeHtml(job.title)}</h2><p>${escapeHtml(job.description || 'No description')}</p><a href="${job.url}" target="_blank" style="display:inline-block;padding:10px 20px;background:blue;color:white;text-decoration:none;border-radius:5px;margin-top:10px;">Apply Now</a>`;
+                modal.style.display = 'block';
+            } catch (e) { console.error(e); alert('Failed load details'); }
+        }
+
+        function closeModal() { modal.style.display = 'none'; }
+
+        function updateStats() {
+            if (totalJobsEl) totalJobsEl.textContent = allJobs.length;
+            if (recentJobsEl) recentJobsEl.textContent = allJobs.filter(j => j.jobAgeDays <= 7).length;
+        }
+
+        function showLoading() {
+            if (loadingState) loadingState.style.display = 'block';
+            if (jobsGrid) jobsGrid.style.display = 'none';
+            if (errorState) errorState.style.display = 'none';
+        }
+        function showJobs() {
+            if (loadingState) loadingState.style.display = 'none';
+            if (jobsGrid) jobsGrid.style.display = 'grid';
+            if (errorState) errorState.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'none';
+        }
+        function showError(msg) {
+            if (document.getElementById('errorMessage')) document.getElementById('errorMessage').textContent = msg;
+            if (loadingState) loadingState.style.display = 'none';
+            if (errorState) errorState.style.display = 'block';
+        }
+        function showEmpty() {
+            if (loadingState) loadingState.style.display = 'none';
+            if (emptyState) emptyState.style.display = 'block';
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function (...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func(...args), wait);
+            };
+        }
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
 
 </html>

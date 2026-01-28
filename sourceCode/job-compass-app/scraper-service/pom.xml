@@ -35,16 +35,11 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
-        <!-- Selenium WebDriver -->
+        <!-- Playwright (Replaces Selenium) -->
         <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-        </dependency>
-
-        <!-- WebDriverManager (auto-manages Chrome driver) -->
-        <dependency>
-            <groupId>io.github.bonigarcia</groupId>
-            <artifactId>webdrivermanager</artifactId>
+            <groupId>com.microsoft.playwright</groupId>
+            <artifactId>playwright</artifactId>
+            <version>1.49.0</version>
         </dependency>
 
         <!-- Jsoup for HTML parsing -->

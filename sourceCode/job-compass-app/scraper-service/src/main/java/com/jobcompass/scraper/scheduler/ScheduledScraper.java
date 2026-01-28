@@ -24,7 +24,7 @@ public class ScheduledScraper {
 
     private final LinkedInScraper linkedInScraper;
 
-    @Value("${app.scheduler.skills:Java,Spring Boot,React,Angular,Python,Docker,Kubernetes}")
+    @Value("${app.scheduler.skills:Java, Spring Boot, GenAI, microservices, AI, ML}")
     private String defaultSkills;
 
     @Value("${app.scheduler.max-job-age-days:1}")

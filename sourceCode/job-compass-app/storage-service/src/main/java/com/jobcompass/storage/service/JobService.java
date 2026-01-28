@@ -1,6 +1,7 @@
 package com.jobcompass.storage.service;
 
 import com.jobcompass.common.events.ProcessedJobEvent;
+import com.jobcompass.common.events.RawJobEvent;
 import com.jobcompass.common.model.Source;
 import com.jobcompass.storage.entity.Company;
 import com.jobcompass.storage.entity.Job;
@@ -65,13 +66,46 @@ public class JobService {
     }
 
     /**
+     * Save or update a job from RawJobEvent.
+     * Implements upsert logic to prevent duplicates based on URL.
+     * 
+     * @param event the raw job event from scraper
+     * @return the saved or updated job
+     */
+    @Transactional
+    public Job saveRawJob(RawJobEvent event) {
+        log.debug("Processing raw job: {} at {}", event.getTitle(), event.getCompany());
+
+        // Try to find existing job by URL
+        Optional<Job> existingJob = jobRepository.findByUrl(event.getUrl());
+
+        Job job;
+        if (existingJob.isPresent()) {
+            log.info("Updating existing job: {}", event.getUrl());
+            job = existingJob.get();
+            updateJobFromRawEvent(job, event);
+        } else {
+            log.info("Creating new job from raw event: {}", event.getUrl());
+            job = createJobFromRawEvent(event);
+        }
+
+        // Handle company relationship
+        if (event.getCompany() != null && !event.getCompany().trim().isEmpty()) {
+            Company company = companyService.findOrCreateCompany(event.getCompany());
+            job.setCompany(company);
+        }
+
+        return jobRepository.save(job);
+    }
+
+    /**
      * Find a job by ID.
      * 
      * @param id the job ID
      * @return Optional containing the job if found
      */
     public Optional<Job> findById(Long id) {
-        return jobRepository.findById(id);
+        return jobRepository.findByIdWithDetails(id);
     }
 
     /**
@@ -166,22 +200,22 @@ public class JobService {
      */
     private Job createJobFromEvent(ProcessedJobEvent event) {
         return Job.builder()
-            .title(event.getTitle())
-            .location(event.getLocation())
-            .url(event.getUrl())
-            .salaryRange(event.getSalary())
-            .postedDate(event.getPostedDate() != null ? event.getPostedDate().toLocalDate() : null)
-            .jobAgeDays(event.getJobAgeInDays())
-            .source(event.getSource())
-            .scrapedAt(LocalDateTime.now())
-            .isActive(true)
-            .build();
+                .title(event.getTitle())
+                .location(event.getLocation())
+                .url(event.getUrl())
+                .salaryRange(event.getSalary())
+                .postedDate(event.getPostedDate() != null ? event.getPostedDate().toLocalDate() : null)
+                .jobAgeDays(event.getJobAgeInDays())
+                .source(event.getSource())
+                .scrapedAt(LocalDateTime.now())
+                .isActive(true)
+                .build();
     }
 
     /**
      * Update an existing Job entity from ProcessedJobEvent.
      * 
-     * @param job the existing job
+     * @param job   the existing job
      * @param event the processed job event
      */
     private void updateJobFromEvent(Job job, ProcessedJobEvent event) {
@@ -191,6 +225,53 @@ public class JobService {
         job.setPostedDate(event.getPostedDate() != null ? event.getPostedDate().toLocalDate() : null);
         job.setJobAgeDays(event.getJobAgeInDays());
         job.setScrapedAt(LocalDateTime.now());
+        // Keep the job active when updating
+        job.setIsActive(true);
+    }
+
+    /**
+     * Create a new Job entity from RawJobEvent.
+     * 
+     * @param event the raw job event
+     * @return new job entity
+     */
+    private Job createJobFromRawEvent(RawJobEvent event) {
+        Job.JobBuilder jobBuilder = Job.builder()
+                .title(event.getTitle())
+                .location(event.getLocation())
+                .url(event.getUrl())
+                .description(event.getDescription())
+                .source(event.getSource())
+                .scrapedAt(event.getScrapedAt() != null ? event.getScrapedAt() : LocalDateTime.now())
+                .isActive(true);
+
+        // Parse posted date
+        if (event.getPostedDate() != null) {
+            try {
+                // Assuming format YYYY-MM-DD from scraper
+                jobBuilder.postedDate(LocalDate.parse(event.getPostedDate()));
+            } catch (Exception e) {
+                log.warn("Failed to parse posted date: {}", event.getPostedDate());
+                jobBuilder.postedDate(LocalDate.now());
+            }
+        } else {
+            jobBuilder.postedDate(LocalDate.now());
+        }
+
+        return jobBuilder.build();
+    }
+
+    /**
+     * Update an existing Job entity from RawJobEvent.
+     * 
+     * @param job   the existing job
+     * @param event the raw job event
+     */
+    private void updateJobFromRawEvent(Job job, RawJobEvent event) {
+        job.setTitle(event.getTitle());
+        job.setLocation(event.getLocation());
+        job.setDescription(event.getDescription());
+        job.setScrapedAt(event.getScrapedAt() != null ? event.getScrapedAt() : LocalDateTime.now());
         // Keep the job active when updating
         job.setIsActive(true);
     }

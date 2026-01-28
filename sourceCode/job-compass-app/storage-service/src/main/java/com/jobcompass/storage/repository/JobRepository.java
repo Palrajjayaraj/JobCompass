@@ -33,7 +33,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     /**
      * Find a job by source and external ID.
      * 
-     * @param source the job source
+     * @param source     the job source
      * @param externalId the external job ID
      * @return Optional containing the job if found
      */
@@ -50,7 +50,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
     /**
      * Find active jobs by source.
      * 
-     * @param source the job source
+     * @param source   the job source
      * @param isActive whether the job is active
      * @return list of active jobs from the source
      */
@@ -70,7 +70,7 @@ public interface JobRepository extends JpaRepository<Job, Long> {
      * @param startDate the start date
      * @return list of recent active jobs
      */
-    @Query("SELECT j FROM Job j WHERE j.postedDate >= :startDate AND j.isActive = true ORDER BY j.postedDate DESC")
+    @Query("SELECT j FROM Job j LEFT JOIN FETCH j.company LEFT JOIN FETCH j.skills WHERE j.postedDate >= :startDate AND j.isActive = true ORDER BY j.postedDate DESC")
     List<Job> findRecentJobs(@Param("startDate") LocalDate startDate);
 
     /**
@@ -104,9 +104,18 @@ public interface JobRepository extends JpaRepository<Job, Long> {
      * Find jobs posted within a date range.
      * 
      * @param startDate the start date
-     * @param endDate the end date
+     * @param endDate   the end date
      * @return list of active jobs within the date range
      */
     @Query("SELECT j FROM Job j WHERE j.postedDate BETWEEN :startDate AND :endDate AND j.isActive = true ORDER BY j.postedDate DESC")
     List<Job> findByPostedDateBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    /**
+     * Find a job by ID with eager fetching of associated entities.
+     * 
+     * @param id the job ID
+     * @return Optional containing the job if found
+     */
+    @Query("SELECT j FROM Job j LEFT JOIN FETCH j.company LEFT JOIN FETCH j.skills WHERE j.id = :id")
+    Optional<Job> findByIdWithDetails(@Param("id") Long id);
 }

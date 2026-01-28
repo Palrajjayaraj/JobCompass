@@ -1,6 +1,7 @@
 package com.jobcompass.storage.config;
 
 import com.jobcompass.common.events.ProcessedJobEvent;
+import com.jobcompass.common.events.RawJobEvent;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 /**
  * Configuration class for Kafka consumer.
- * Configures deserialization of ProcessedJobEvent messages.
+ * Configures deserialization of RawJobEvent and ProcessedJobEvent messages.
  * 
  * @author Palrajjayaraj
  */
@@ -67,9 +68,40 @@ public class KafkaConsumerConfig {
      */
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, ProcessedJobEvent> kafkaListenerContainerFactory() {
-        ConcurrentKafkaListenerContainerFactory<String, ProcessedJobEvent> factory =
-            new ConcurrentKafkaListenerContainerFactory<>();
+        ConcurrentKafkaListenerContainerFactory<String, ProcessedJobEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
+        return factory;
+    }
+
+    /**
+     * Create consumer factory for RawJobEvent.
+     * 
+     * @return consumer factory for raw jobs
+     */
+    @Bean
+    public ConsumerFactory<String, RawJobEvent> rawJobConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+        props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, RawJobEvent.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.jobcompass.common.events");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+        return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    /**
+     * Create listener container factory for raw job Kafka consumers.
+     * 
+     * @return listener container factory for raw jobs
+     */
+    @Bean(name = "rawJobKafkaListenerContainerFactory")
+    public ConcurrentKafkaListenerContainerFactory<String, RawJobEvent> rawJobKafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, RawJobEvent> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(rawJobConsumerFactory());
         return factory;
     }
 }

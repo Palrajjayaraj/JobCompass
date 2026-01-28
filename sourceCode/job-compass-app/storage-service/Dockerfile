@@ -14,6 +14,9 @@ COPY scraper-service/pom.xml scraper-service/pom.xml
 # Install parent POM, common module and build service
 RUN mvn clean install -N
 RUN mvn clean install -DskipTests -pl common
+# Run tests for storage-service (build will fail if tests fail)
+RUN mvn test -pl storage-service
+# Package the service
 RUN mvn clean package -DskipTests -pl storage-service
 
 FROM eclipse-temurin:21-jre-jammy
