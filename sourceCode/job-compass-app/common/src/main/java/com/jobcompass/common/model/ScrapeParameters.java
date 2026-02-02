@@ -9,7 +9,7 @@ public record ScrapeParameters(
         Integer maxResults, // Maximum number of jobs to scrape per source
         String skill, // Optional: Filter by skill (e.g., "Java", "Python")
         String location, // Optional: Filter by location (e.g., "San Francisco", "Remote")
-        String authCookie // Optional: LinkedIn 'li_at' cookie for authentication
+        java.util.Map<String, java.util.Map<String, String>> authentication // Optional: Credentials per source
 ) {
     /**
      * Create default scraping parameters (7 days, 20 results, no filters)
@@ -36,7 +36,7 @@ public record ScrapeParameters(
      * Create parameters with all filters and authentication
      */
     public static ScrapeParameters withAuth(int maxJobAgeDays, int maxResults, String skill, String location,
-            String authCookie) {
-        return new ScrapeParameters(maxJobAgeDays, maxResults, skill, location, authCookie);
+            java.util.Map<String, java.util.Map<String, String>> authentication) {
+        return new ScrapeParameters(maxJobAgeDays, maxResults, skill, location, authentication);
     }
 }

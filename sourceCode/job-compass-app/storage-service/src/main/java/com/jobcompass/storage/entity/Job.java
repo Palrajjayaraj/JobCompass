@@ -25,14 +25,14 @@ import java.util.Set;
  */
 @Entity
 @Table(name = "jobs", indexes = {
-    @Index(name = "idx_job_url", columnList = "url", unique = true),
-    @Index(name = "idx_job_external_id", columnList = "external_id"),
-    @Index(name = "idx_job_source", columnList = "source"),
-    @Index(name = "idx_job_posted_date", columnList = "posted_date"),
-    @Index(name = "idx_job_company_id", columnList = "company_id"),
-    @Index(name = "idx_job_source_external", columnList = "source, external_id"),
-    @Index(name = "idx_job_is_active", columnList = "is_active"),
-    @Index(name = "idx_job_location", columnList = "location")
+        @Index(name = "idx_job_url", columnList = "url", unique = true),
+        @Index(name = "idx_job_external_id", columnList = "external_id"),
+        @Index(name = "idx_job_source", columnList = "source"),
+        @Index(name = "idx_job_posted_date", columnList = "posted_date"),
+        @Index(name = "idx_job_company_id", columnList = "company_id"),
+        @Index(name = "idx_job_source_external", columnList = "source, external_id"),
+        @Index(name = "idx_job_is_active", columnList = "is_active"),
+        @Index(name = "idx_job_location", columnList = "location")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Data
@@ -75,16 +75,12 @@ public class Job {
     @Column(name = "scraped_at", nullable = false)
     private LocalDateTime scrapedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "company_id")
     private Company company;
 
-    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinTable(
-        name = "job_skills",
-        joinColumns = @JoinColumn(name = "job_id"),
-        inverseJoinColumns = @JoinColumn(name = "skill_id")
-    )
+    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.EAGER)
+    @JoinTable(name = "job_skills", joinColumns = @JoinColumn(name = "job_id"), inverseJoinColumns = @JoinColumn(name = "skill_id"))
     @Builder.Default
     private Set<Skill> skills = new HashSet<>();
 

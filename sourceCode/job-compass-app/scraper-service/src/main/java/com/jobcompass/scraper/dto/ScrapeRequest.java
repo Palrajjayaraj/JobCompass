@@ -38,7 +38,9 @@ public class ScrapeRequest {
     private int maxResults = 5;
 
     /**
-     * LinkedIn 'li_at' cookie for authentication (optional)
+     * Map of authentication credentials per source.
+     * Key: Source (e.g., "LINKEDIN"), Value: Map of credentials (e.g., {"li_at":
+     * "..."})
      */
-    private String authCookie;
+    private java.util.Map<String, java.util.Map<String, String>> authentication;
 }

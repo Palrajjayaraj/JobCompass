@@ -21,23 +21,65 @@
                     <div class="logo-icon">🧭</div>
                     <h1>JobCompass</h1>
                 </div>
-                <div class="header-stats">
-                    <button class="btn-secondary" id="triggerScrapeBtn"
-                        style="margin-right: 20px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
-                        <span>⚡</span> Trigger Scrape
-                    </button>
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalJobs">0</div>
-                        <div class="stat-label">Total Jobs</div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-value" id="recentJobs">0</div>
-                        <div class="stat-label">This Week</div>
-                    </div>
+
+
+                <div class="stat-card">
+                    <div class="stat-value" id="totalJobs">0</div>
+                    <div class="stat-label">Total Jobs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="recentJobs">0</div>
+                    <div class="stat-label">This Week</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="appliedJobs">0</div>
+                    <div class="stat-label">Applied</div>
                 </div>
             </div>
         </div>
+        </div>
     </header>
+
+    <!-- Scrape Configuration Section (Moves here) -->
+    <section class="config-container">
+        <div class="container">
+            <div class="config-section"
+                style="background: rgba(255,255,255,0.05); padding: 20px; border-radius: 12px; margin-bottom: 20px; margin-top: 20px;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                    <span>⚙️</span> Scrape Configuration
+                </h3>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group">
+                        <label class="block text-gray-400 mb-2 font-medium">Skills <span
+                                class="text-xs text-gray-500">(Comma separated)</span></label>
+                        <input type="text" id="skillsInput" class="modern-input" placeholder="e.g. Java, Python, React"
+                            value="">
+                    </div>
+                    <div class="form-group">
+                        <label class="block text-gray-400 mb-2 font-medium">Location</label>
+                        <input type="text" id="locationInput" class="modern-input" placeholder="e.g. Berlin, Remote"
+                            value="">
+                    </div>
+                </div>
+
+                <!-- Auth Cookie -->
+                <div>
+                    <label class="block text-gray-400 mb-2 font-medium">LinkedIn Cookie (li_at) <span
+                            class="text-xs text-gray-500">(Optional but Recommended)</span></label>
+                    <input type="password" id="authCookie" class="modern-input"
+                        placeholder="Paste li_at cookie here for cleaner results...">
+                </div>
+
+                <!-- Action Button -->
+                <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                    <button class="btn-primary" id="triggerScrapeBtn" style="padding: 12px 24px; font-size: 1rem;">
+                        <span>⚡</span> Trigger Scrape
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Search and Filters -->
     <section class="search-section">
@@ -68,13 +110,31 @@
                             <option value="1">Today</option>
                         </select>
                     </div>
+
+                    <div class="filter-group">
+                        <label for="sortFilter">Sort By</label>
+                        <select id="sortFilter">
+                            <option value="DATE_DESC">Newest First</option>
+                            <option value="SKILL_MATCH">Best Skill Match</option>
+                            <option value="APPLIED_DESC">Applied First</option>
+                            <option value="APPLIED_ASC">Unapplied First</option>
+                        </select>
+                    </div>
                 </div>
 
-                <button class="btn-primary" id="refreshBtn">
-                    <span>🔄</span> Refresh Jobs
-                </button>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+                    <button class="btn-icon" id="viewToggleBtn" title="Toggle View" style="height: 48px; width: 48px;">
+                        <span id="viewIcon">📋</span>
+                    </button>
+                    <button class="btn-primary" id="refreshBtn" style="height: 48px;">
+                        <span>🔄</span> Refresh Jobs
+                    </button>
+                    <button class="btn-primary" onclick="openTop10Jobs()"
+                        style="height: 48px; background: linear-gradient(135deg, #a855f7, #6366f1);">
+                        <span>🚀</span> Open Top 10
+                    </button>
+                </div>
             </div>
-        </div>
         </div>
     </section>
 
@@ -87,14 +147,7 @@
                 <p>Discovering amazing opportunities...</p>
             </div>
 
-            <!-- Auth Cookie -->
-            <div>
-                <label class="block text-gray-400 mb-2 font-medium">LinkedIn Cookie (li_at) <span
-                        class="text-xs text-gray-500">(Optional - for Auth)</span></label>
-                <input type="password" id="authCookie"
-                    class="w-full bg-gray-700 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    placeholder="Paste li_at cookie here...">
-            </div>
+
 
             <!-- Error State -->
             <div id="errorState" class="error-state" style="display: none;">
@@ -116,6 +169,174 @@
         </div>
     </section>
 
+    <style>
+        /* Modern Input Styling */
+        .modern-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .modern-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #a855f7;
+            box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+        }
+
+        /* View Toggle Button */
+        .header-stats {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-icon {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            transition: background 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* List View Overrides */
+        .jobs-grid.list-view {
+            display: grid;
+            grid-template-columns: 1fr;
+            /* Force single column */
+            gap: 15px;
+        }
+
+        .jobs-grid.list-view .job-card {
+            display: grid;
+            grid-template-columns: 80px 2fr 1fr 1fr auto;
+            align-items: center;
+            padding: 12px 20px;
+            gap: 20px;
+            min-height: auto;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .jobs-grid.list-view .job-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .jobs-grid.list-view .job-header {
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            text-align: center;
+        }
+
+        .jobs-grid.list-view .job-title {
+            margin-bottom: 0;
+            font-size: 1.1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .jobs-grid.list-view .job-company {
+            margin-bottom: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .jobs-grid.list-view .job-details {
+            margin-top: 0;
+            display: flex;
+            gap: 20px;
+            justify-content: flex-start;
+        }
+
+        .jobs-grid.list-view .job-footer {
+            margin-top: 0;
+            border-top: none;
+            padding-top: 0;
+        }
+
+        /* Group Headers */
+        .group-header {
+            grid-column: 1 / -1;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #94a3b8;
+            margin: 20px 0 10px 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .group-header::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Badges & Tags */
+        .applied-badge {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .skill-tag {
+            background: rgba(168, 85, 247, 0.15);
+            color: #d8b4fe;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            white-space: nowrap;
+        }
+
+        .matched-skill {
+            background: rgba(168, 85, 247, 0.3);
+            border-color: rgba(168, 85, 247, 0.5);
+            font-weight: 600;
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+        }
+
+        .tags-container {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+    </style>
+
+
     <!-- Job Detail Modal -->
     <div id="jobModal" class="modal">
         <div class="modal-content">
@@ -132,10 +353,10 @@
         let allJobs = [];
         let filteredJobs = [];
 
-        // DOM Elements (will be initialized in DOMContentLoaded)
-        let jobsGrid, loadingState, errorState, emptyState, searchInput, sourceFilter, daysFilter, refreshBtn, totalJobsEl, recentJobsEl, modal, closeBtn;
+        // Initialize (Revised)
+        const DEFAULT_SKILLS = "Java, Spring Boot, GenAI, Eclipse Plugin Development, Typescript / Angular, AI/ML";
+        const DEFAULT_LOCATION = "Germany";
 
-        // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             // Initialize Elements
             jobsGrid = document.getElementById('jobsGrid');
@@ -145,14 +366,17 @@
             searchInput = document.getElementById('searchInput');
             sourceFilter = document.getElementById('sourceFilter');
             daysFilter = document.getElementById('daysFilter');
+            sortFilter = document.getElementById('sortFilter'); // New
             refreshBtn = document.getElementById('refreshBtn');
             totalJobsEl = document.getElementById('totalJobs');
             recentJobsEl = document.getElementById('recentJobs');
             modal = document.getElementById('jobModal');
+            viewToggleBtn = document.getElementById('viewToggleBtn');
             closeBtn = document.querySelector('.close-btn');
 
             console.log("🚀 Custom Script Loaded!");
 
+            loadDefaults(); // Load persisted values
             loadJobs();
             setupEventListeners();
         });
@@ -162,14 +386,13 @@
             if (searchInput) searchInput.addEventListener('input', debounce(filterJobs, 300));
             if (sourceFilter) sourceFilter.addEventListener('change', filterJobs);
             if (daysFilter) daysFilter.addEventListener('change', loadJobs);
+            if (sortFilter) sortFilter.addEventListener('change', filterJobs); // Trigger sort
             if (refreshBtn) refreshBtn.addEventListener('click', loadJobs);
+            if (viewToggleBtn) viewToggleBtn.addEventListener('click', toggleView);
 
             const triggerBtn = document.getElementById('triggerScrapeBtn');
             if (triggerBtn) {
-                console.log("Trigger Button Found!");
                 triggerBtn.addEventListener('click', triggerScrape);
-            } else {
-                console.error("Trigger Button NOT found!");
             }
 
             if (closeBtn) closeBtn.addEventListener('click', closeModal);
@@ -178,44 +401,34 @@
             });
         }
 
-        // Trigger Manual Scrape
+        // Trigger Scrape
         async function triggerScrape() {
-            console.log('[triggerScrape] Button clicked!');
             const btn = document.getElementById('triggerScrapeBtn');
             const originalText = btn.innerHTML;
-
-            const skills = ['Java', 'Spring Boot', 'GenAI', 'microservices', 'AI', 'ML'];
-            console.log('[triggerScrape] Using skills:', skills);
+            const skills = document.getElementById('skillsInput').value;
+            const location = document.getElementById('locationInput').value;
+            const cookie = document.getElementById('authCookie').value;
 
             btn.innerHTML = '<span>⏳</span> Scraping...';
             btn.disabled = true;
 
             try {
-                // Read values from the DOM
-                const cookieInput = document.getElementById('authCookie')?.value || '';
-                const locationVal = 'Germany'; // Fixed location for now
-
-                // Call local proxy
-                const payload = {
-                    skills: skills,
-                    location: locationVal,
-                    maxResults: 5,
-                    maxJobAgeDays: 1,
-                    authCookie: cookieInput ? cookieInput.trim() : null
-                };
-
                 const response = await fetch('/api/trigger-scrape', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({
+                        skills: skills.split(',').map(s => s.trim()),
+                        location: location,
+                        linkedin_cookie: cookie
+                    })
                 });
 
                 if (response.ok) {
-                    const text = await response.text(); // Expect text response now
-                    // alert(`✅ ${text}\n\nJobs will appear shortly.`);
-                    alert(`✅ Scraping started successfully!\n\nCheck back in a minute for new jobs.`);
+                    alert("Jobs will be processed in background.\n\nCheck back in a minute for new jobs.");
                     setTimeout(loadJobs, 5000);
                 } else {
+                    const txt = await response.text();
+                    console.error("Scrape failed:", txt);
                     alert('❌ Failed to trigger scraping. Check console.');
                 }
             } catch (error) {
@@ -229,51 +442,39 @@
 
         // Load Jobs
         async function loadJobs() {
-            console.log('[loadJobs] Starting...');
             showLoading();
-
-            const days = daysFilter ? daysFilter.value : 7;
-            const endpoint = `${API_BASE_URL}/jobs/recent?days=${days}`;
-
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => {
-                console.error("Fetch timed out!");
-                controller.abort();
-            }, 5000);
-
             try {
-                const response = await fetch(endpoint, { signal: controller.signal });
-                clearTimeout(timeoutId);
-
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                const response = await fetch(`${API_BASE_URL}/jobs`);
+                if (!response.ok) throw new Error('Failed to fetch jobs');
 
                 allJobs = await response.json();
-                console.log('[loadJobs] Loaded:', allJobs.length);
-                filteredJobs = [...allJobs];
 
+                // Calculate derived fields
+                allJobs.forEach(job => {
+                    if (job.postedDate) {
+                        const posted = new Date(job.postedDate);
+                        const now = new Date();
+                        const diffTime = Math.abs(now - posted);
+                        job.jobAgeDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    } else {
+                        job.jobAgeDays = 0;
+                    }
+                });
+
+                filterJobs(); // Filter, Sort, Render
                 updateStats();
-                filterJobs();
-
-                if (allJobs.length === 0) showEmpty();
-                else showJobs();
-
             } catch (error) {
-                console.error('[loadJobs] Error:', error);
-
-                // If it's a timeout, show a specific message but allow retrying
-                if (error.name === 'AbortError') {
-                    showError('Loading timed out. Backend is busy starting up.');
-                } else {
-                    showError(error.message);
-                }
+                console.error('Error loading jobs:', error);
+                showError('Unable to load jobs. Check if storage-service is running.');
             }
         }
 
-        // Filter Jobs
+        // Filter Jobs (Enhanced)
         function filterJobs() {
             const searchTerm = searchInput.value.toLowerCase().trim();
             const sourceValue = sourceFilter.value;
 
+            // 1. Filter
             filteredJobs = allJobs.filter(job => {
                 const matchesSearch = !searchTerm ||
                     job.title?.toLowerCase().includes(searchTerm) ||
@@ -282,56 +483,278 @@
                 const matchesSource = !sourceValue || job.source?.name === sourceValue;
                 return matchesSearch && matchesSource;
             });
+
+            // 2. Sort
+            sortJobs();
+
+            // 3. Render
             renderJobs();
         }
 
-        // Render Jobs
+        // Sorting Logic
+        function sortJobs() {
+            const sortMode = sortFilter ? sortFilter.value : 'DATE_DESC';
+            const userSkills = getUserSkills();
+
+            filteredJobs.sort((a, b) => {
+                if (sortMode === 'DATE_DESC') {
+                    // Sort by date desc (postedDate is string YYYY-MM-DD or null, scrapedAt is ISO)
+                    // Prefer postedDate, fallback to scrapedAt
+                    const dateA = a.postedDate || a.scrapedAt;
+                    const dateB = b.postedDate || b.scrapedAt;
+                    return new Date(dateB) - new Date(dateA);
+                }
+                else if (sortMode === 'SKILL_MATCH') {
+                    const scoreA = calculateSkillMatchScore(a, userSkills);
+                    const scoreB = calculateSkillMatchScore(b, userSkills);
+                    return scoreB - scoreA; // Highest score first
+                }
+                else if (sortMode === 'APPLIED_DESC') {
+                    const appliedA = (a.applicationCount || 0) > 0 ? 1 : 0;
+                    const appliedB = (b.applicationCount || 0) > 0 ? 1 : 0;
+                    return appliedB - appliedA;
+                }
+                else if (sortMode === 'APPLIED_ASC') {
+                    const appliedA = (a.applicationCount || 0) > 0 ? 1 : 0;
+                    const appliedB = (b.applicationCount || 0) > 0 ? 1 : 0;
+                    return appliedA - appliedB;
+                }
+                return 0;
+            });
+        }
+
+        function getUserSkills() {
+            const input = document.getElementById('skillsInput');
+            if (!input || !input.value) return [];
+            return input.value.toLowerCase().split(',').map(s => s.trim()).filter(s => s);
+        }
+
+        function calculateSkillMatchScore(job, userSkills) {
+            if (!job.skills || job.skills.length === 0) return 0;
+            let matchCount = 0;
+            const jobSkillsLower = job.skills.map(s => s.toLowerCase());
+            userSkills.forEach(us => {
+                if (jobSkillsLower.some(js => js.includes(us) || us.includes(js))) {
+                    matchCount++;
+                }
+            });
+            return matchCount;
+        }
+
+
+        // Render Jobs with Grouping
         function renderJobs() {
             if (!jobsGrid) return;
             if (filteredJobs.length === 0) {
                 showEmpty();
                 return;
             }
-            jobsGrid.innerHTML = filteredJobs.map(job => createJobCard(job)).join('');
+
+            const sortMode = sortFilter ? sortFilter.value : 'DATE_DESC';
+            const userSkills = getUserSkills();
+            let currentGroup = null;
+            let html = '';
+
+            filteredJobs.forEach(job => {
+                const groupKey = getGroupKey(job, sortMode, userSkills);
+
+                // Insert Header if group changes
+                if (groupKey !== currentGroup) {
+                    html += `<div class="group-header"><span>${groupKey}</span></div>`;
+                    currentGroup = groupKey;
+                }
+
+                html += createJobCard(job, userSkills);
+            });
+
+            jobsGrid.innerHTML = html;
             showJobs();
         }
 
-        // Create Job Card
-        function createJobCard(job) {
+        function getGroupKey(job, sortMode, userSkills) {
+            if (sortMode === 'DATE_DESC') {
+                const dateStr = job.postedDate || (job.scrapedAt ? job.scrapedAt.split('T')[0] : '');
+                if (!dateStr) return 'Unknown Date';
+
+                const date = new Date(dateStr);
+                const today = new Date();
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+
+                if (isSameDate(date, today)) return 'Today';
+                if (isSameDate(date, yesterday)) return 'Yesterday';
+
+                const diffTime = Math.abs(today - date);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays <= 7) return 'This Week';
+                return 'Older';
+            }
+            else if (sortMode === 'SKILL_MATCH') {
+                const jobSkillsLower = (job.skills || []).map(s => s.toLowerCase());
+                // Find first matching skill
+                const primaryMatch = userSkills.find(us => jobSkillsLower.some(js => js.includes(us) || us.includes(js)));
+                if (primaryMatch) return `Matches "${capitalize(primaryMatch)}"`;
+                return 'Other Jobs';
+            }
+            else if (sortMode.includes('APPLIED')) {
+                const isApplied = (job.applicationCount || 0) > 0;
+                return isApplied ? 'Applied' : 'New Opportunities';
+            }
+
+            return 'All Jobs';
+        }
+
+        function isSameDate(d1, d2) {
+            return d1.getFullYear() === d2.getFullYear() &&
+                d1.getMonth() === d2.getMonth() &&
+                d1.getDate() === d2.getDate();
+        }
+
+        function capitalize(s) {
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        }
+
+        // Create Job Card (Enhanced)
+        function createJobCard(job, userSkills) {
             const source = job.source?.name || 'Unknown';
             const sourceClass = `source-${source.toLowerCase()}`;
-            const jobAge = job.jobAgeDays ? `${job.jobAgeDays}d ago` : 'Recently';
+            // Format Posted Date
+            const postedRaw = job.postedDate ? new Date(job.postedDate) : null;
+            const jobAge = postedRaw && !isNaN(postedRaw)
+                ? postedRaw.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                : (job.jobAgeDays ? `${job.jobAgeDays}d ago` : 'Recently');
+
             const salary = job.salaryRange || 'Not specified';
             const location = job.location || 'Not specified';
 
+            // Applied Badge
+            const isApplied = (job.applicationCount || 0) > 0;
+            const appliedBadge = isApplied
+                ? `<div class="applied-badge"><span>✅</span> Applied</div>`
+                : '';
+
+            // Skill Tags
+            let tagsHtml = '';
+            if (job.skills && job.skills.length > 0) {
+                tagsHtml = '<div class="tags-container">' +
+                    job.skills.map(skill => {
+                        const isMatch = userSkills.some(us => skill.toLowerCase().includes(us) || us.includes(skill.toLowerCase()));
+                        const matchClass = isMatch ? 'matched-skill' : '';
+                        return `<span class="skill-tag ${matchClass}">${escapeHtml(skill)}</span>`;
+                    }).join('') +
+                    '</div>';
+            }
+
             return `
-                <div class="job-card" onclick="showJobDetail(${job.id})">
+                <div class="job-card" onclick="window.open('${escapeHtml(job.url)}', '_blank')" style="cursor: pointer;">
                     <div class="job-header">
                         <span class="job-source ${sourceClass}">${source}</span>
                         <span class="job-age">${jobAge}</span>
+                        ${appliedBadge}
                     </div>
                     <h3 class="job-title">${escapeHtml(job.title)}</h3>
                     <div class="job-company"><span>🏢</span><span>${escapeHtml(job.companyName || 'Company')}</span></div>
+                    
+                    ${tagsHtml}
+                    
                     <div class="job-details">
                         <div class="job-detail"><span>📍</span><span>${escapeHtml(location)}</span></div>
                         <div class="job-detail"><span>💰</span><span>${escapeHtml(salary)}</span></div>
                     </div>
-                    <div class="job-footer">
-                        <button class="view-details-btn" onclick="event.stopPropagation(); showJobDetail(${job.id})">View Details →</button>
+                    <div class="job-footer" style="display:flex; gap: 10px;">
+                        <button class="view-details-btn" onclick="event.stopPropagation(); showJobDetail(${job.id}); return false;">View Details →</button>
                     </div>
                 </div>`;
         }
 
-        // Show Details (Abbreviated for brevity in inline script)
+        // Apply to Job
+        async function applyToJob(jobId, url) {
+            const btn = document.getElementById('applyBtn');
+            btn.innerHTML = 'Applying...';
+            btn.disabled = true;
+
+            try {
+                // Call Backend to track application
+                // Use a default email or prompt user?? For now, using a placeholder check
+                // Since there is no auth, we'll use a prompt or default.
+                // Or better, just mark it!
+
+                // Note: The backend requires an email. We'll use a prompt for now.
+                // In a real app, this would come from auth context.
+                let email = localStorage.getItem('user_email');
+                if (!email) {
+                    email = prompt("Enter your email to track this application:", "user@example.com");
+                    if (email) localStorage.setItem('user_email', email);
+                }
+
+                if (!email) {
+                    btn.innerHTML = 'Apply Now';
+                    btn.disabled = false;
+                    return;
+                }
+
+                const response = await fetch('/api/applications', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jobId: jobId,
+                        userEmail: email,
+                        notes: 'Applied via JobCompass'
+                    })
+                });
+
+                if (response.ok) {
+                    // Open URL in new tab
+                    window.open(url, '_blank');
+
+                    // Update UI locally immediately
+                    alert("Application tracked! Opening job link...");
+                    closeModal();
+                    loadJobs(); // Reload to show badge
+                } else {
+                    const txt = await response.text();
+                    console.error("Application failed:", txt);
+                    alert('Failed to track application: ' + txt);
+                    window.open(url, '_blank'); // Open anyway
+                }
+            } catch (e) {
+                console.error("Apply error:", e);
+                window.open(url, '_blank'); // Open anyway fallback
+            }
+
+            if (btn) {
+                btn.innerHTML = 'Apply Now 🚀';
+                btn.disabled = false;
+            }
+        }
+
+
+        // Show Details
         async function showJobDetail(jobId) {
             try {
                 const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`);
                 if (!response.ok) throw new Error('Failed to load details');
                 const job = await response.json();
 
-                // Populate modal (simplified)
+                // Populate modal
                 const content = document.getElementById('jobDetailContent');
-                content.innerHTML = `<h2>${escapeHtml(job.title)}</h2><p>${escapeHtml(job.description || 'No description')}</p><a href="${job.url}" target="_blank" style="display:inline-block;padding:10px 20px;background:blue;color:white;text-decoration:none;border-radius:5px;margin-top:10px;">Apply Now</a>`;
+                content.innerHTML = `
+                    <h2>${escapeHtml(job.title)}</h2>
+                    <div style="margin-bottom: 15px; color: #aaa;">
+                        ${job.companyName} &bull; ${job.location || 'Remote'}
+                    </div>
+                    <div class="job-description">
+                        ${escapeHtml(job.description || 'No description available.')}
+                    </div>
+                    <div style="margin-top: 20px; text-align: right;">
+                        <button id="applyBtn" 
+                            onclick="applyToJob(${job.id}, '${escapeHtml(job.url)}')"
+                            style="padding:10px 20px; background:#4CAF50; color:white; border:none; border-radius:5px; cursor:pointer; font-size:16px;">
+                            Apply Now 🚀
+                        </button>
+                    </div>
+                `;
                 modal.style.display = 'block';
             } catch (e) { console.error(e); alert('Failed load details'); }
         }
@@ -341,6 +764,9 @@
         function updateStats() {
             if (totalJobsEl) totalJobsEl.textContent = allJobs.length;
             if (recentJobsEl) recentJobsEl.textContent = allJobs.filter(j => j.jobAgeDays <= 7).length;
+
+            const appliedJobsEl = document.getElementById('appliedJobs');
+            if (appliedJobsEl) appliedJobsEl.textContent = allJobs.filter(j => (j.applicationCount || 0) > 0).length;
         }
 
         function showLoading() {
@@ -371,6 +797,51 @@
                 timeout = setTimeout(() => func(...args), wait);
             };
         }
+        // Persistence Helpers
+        function loadDefaults() {
+            const savedSkills = localStorage.getItem('defaultSkills');
+            const savedLocation = localStorage.getItem('defaultLocation');
+            const savedView = localStorage.getItem('viewPreference'); // 'grid' or 'list'
+
+            const skillsInput = document.getElementById('skillsInput');
+            const locationInput = document.getElementById('locationInput');
+
+            if (skillsInput) skillsInput.value = savedSkills !== null ? savedSkills : DEFAULT_SKILLS;
+            if (locationInput) locationInput.value = savedLocation !== null ? savedLocation : DEFAULT_LOCATION;
+
+            // Apply View Preference
+            if (savedView === 'list') {
+                toggleView(true);
+            }
+        }
+
+        function saveDefaults(skills, location) {
+            if (skills) localStorage.setItem('defaultSkills', skills);
+            if (location) localStorage.setItem('defaultLocation', location);
+        }
+
+        // View Toggle Logic
+        let isListView = false;
+        function toggleView(forceList = false) {
+            // If forceList is true, set to list view regardless of current state
+            // Otherwise toggle
+            if (typeof forceList === 'boolean' && forceList) {
+                isListView = true;
+            } else {
+                isListView = !isListView;
+            }
+
+            if (jobsGrid) {
+                if (isListView) jobsGrid.classList.add('list-view');
+                else jobsGrid.classList.remove('list-view');
+            }
+            const icon = document.getElementById('viewIcon');
+            if (icon) icon.textContent = isListView ? '⊞' : '📋'; // Switch icon
+
+            // Persist
+            localStorage.setItem('viewPreference', isListView ? 'list' : 'grid');
+        }
+
         function escapeHtml(text) {
             if (!text) return '';
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");

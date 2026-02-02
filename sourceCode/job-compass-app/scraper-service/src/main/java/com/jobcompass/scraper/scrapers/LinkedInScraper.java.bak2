@@ -122,7 +122,7 @@ public class LinkedInScraper implements JobScraper {
                 try {
                     // Get handle to the nth card
                     Locator card = jobCards.nth(i);
-                    RawJobEvent job = extractJobFromCard(page, card);
+                    RawJobEvent job = extractJobFromCard(card);
                     if (job != null) {
                         jobs.add(job);
                         count++;
@@ -175,48 +175,9 @@ public class LinkedInScraper implements JobScraper {
     }
 
     /**
-     * Fetch full job description by navigating to the job details page.
-     * This is more reliable than using snippets for language detection.
-     * 
-     * @param page   the current browser page
-     * @param jobUrl the job URL to fetch
-     * @return the full job description text, or empty string if unavailable
-     */
-    private String fetchFullDescription(Page page, String jobUrl) {
-        try {
-            // Navigate to job details page
-            page.navigate(jobUrl, new Page.NavigateOptions().setTimeout(30000));
-
-            // Wait for description to load
-            page.waitForSelector("div.description__text, div.show-more-less-html__markup",
-                    new Page.WaitForSelectorOptions().setTimeout(10000));
-
-            // Try multiple selectors for job description
-            Locator descLocator = page.locator("div.description__text").first();
-            if (descLocator.count() == 0) {
-                descLocator = page.locator("div.show-more-less-html__markup").first();
-            }
-            if (descLocator.count() == 0) {
-                descLocator = page.locator("div.jobs-description").first();
-            }
-
-            if (descLocator.count() > 0) {
-                return descLocator.innerText().trim();
-            }
-
-            log.debug("Could not find job description on page: {}", jobUrl);
-            return "";
-
-        } catch (Exception e) {
-            log.warn("Failed to fetch full description from {}: {}", jobUrl, e.getMessage());
-            return "";
-        }
-    }
-
-    /**
      * Extract job details from a LinkedIn job card locator
      */
-    private RawJobEvent extractJobFromCard(Page page, Locator card) {
+    private RawJobEvent extractJobFromCard(Locator card) {
         try {
             // Use .first() to handle cases where multiple elements match (though usually
             // one per card)
@@ -225,18 +186,14 @@ public class LinkedInScraper implements JobScraper {
             String location = card.locator("span.job-search-card__location").first().innerText().trim();
             String url = card.locator("a.base-card__full-link").first().getAttribute("href");
 
-            // Fetch FULL description by navigating to job page
-            String description = fetchFullDescription(page, url);
-
-            // If full description fetch fails, fall back to snippet
-            if (description.isEmpty()) {
-                if (card.locator("p.base-search-card__snippet").count() > 0
-                        && card.locator("p.base-search-card__snippet").first().isVisible()) {
-                    description = card.locator("p.base-search-card__snippet").first().innerText().trim();
-                } else if (card.locator("div.base-search-card__info").count() > 0
-                        && card.locator("div.base-search-card__info").first().isVisible()) {
-                    description = card.locator("div.base-search-card__info").first().innerText().trim();
-                }
+            // Extract snippet
+            String description = "";
+            if (card.locator("p.base-search-card__snippet").count() > 0
+                    && card.locator("p.base-search-card__snippet").first().isVisible()) {
+                description = card.locator("p.base-search-card__snippet").first().innerText().trim();
+            } else if (card.locator("div.base-search-card__info").count() > 0
+                    && card.locator("div.base-search-card__info").first().isVisible()) {
+                description = card.locator("div.base-search-card__info").first().innerText().trim();
             }
 
             // Posted date
@@ -249,11 +206,7 @@ public class LinkedInScraper implements JobScraper {
                 }
             }
 
-            // Language filtering on FULL description
-            if (!description.isEmpty() && !languageFilter.isEnglish(description)) {
-                log.info("Filtered non-English job: '{}' at {} (detected from full description)", title, company);
-                return null;
-            }
+
             return RawJobEvent.builder()
                     .source(SOURCE)
                     .title(title)

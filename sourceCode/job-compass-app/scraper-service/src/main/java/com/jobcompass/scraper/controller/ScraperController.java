@@ -70,7 +70,7 @@ public class ScraperController {
                             request.getMaxResults(),
                             null,
                             request.getLocation(),
-                            request.getAuthCookie());
+                            request.getAuthentication());
                     List<RawJobEvent> results = linkedInScraper.scrapeJobs(params);
                     publishJobsToKafka(results);
                     return;
@@ -84,7 +84,7 @@ public class ScraperController {
                                 request.getMaxResults(),
                                 skill.trim(),
                                 request.getLocation(),
-                                request.getAuthCookie());
+                                request.getAuthentication());
 
                         List<RawJobEvent> results = linkedInScraper.scrapeJobs(params);
                         allResults.addAll(results);
