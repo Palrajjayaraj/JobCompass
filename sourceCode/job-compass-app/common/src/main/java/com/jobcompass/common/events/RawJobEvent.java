@@ -27,4 +27,5 @@ public class RawJobEvent {
     private String url; // Job posting URL
     private String postedDate; // "2 days ago" (raw text from site)
     private LocalDateTime scrapedAt; // When we scraped this job
+    private String language; // Detected language code (en, de, fr, etc.)
 }

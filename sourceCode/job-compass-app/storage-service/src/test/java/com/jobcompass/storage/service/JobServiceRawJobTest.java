@@ -50,7 +50,7 @@ public class JobServiceRawJobTest {
     public void setUp() {
         // Create test RawJobEvent
         testEvent = RawJobEvent.builder()
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .title("Senior Java Developer")
                 .company("Google")
                 .location("San Francisco, CA")
@@ -67,7 +67,7 @@ public class JobServiceRawJobTest {
                 .location("San Francisco, CA")
                 .url("https://linkedin.com/jobs/12345")
                 .description("Exciting opportunity...")
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .isActive(true)
                 .build();
 
@@ -129,7 +129,7 @@ public class JobServiceRawJobTest {
         RawJobEvent eventNoCompany = RawJobEvent.builder()
                 .title("Developer")
                 .url("https://example.com/job")
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .build();
 
         when(jobRepository.findByUrl(anyString())).thenReturn(Optional.empty());
@@ -155,7 +155,7 @@ public class JobServiceRawJobTest {
                 .title("Developer")
                 .company("   ")
                 .url("https://example.com/job")
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .build();
 
         when(jobRepository.findByUrl(anyString())).thenReturn(Optional.empty());
@@ -199,7 +199,7 @@ public class JobServiceRawJobTest {
     public void testSaveRawJob_AllFields_Success() {
         // Arrange
         RawJobEvent fullEvent = RawJobEvent.builder()
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .title("Senior Java Developer")
                 .company("Google")
                 .location("San Francisco, CA")
@@ -232,19 +232,19 @@ public class JobServiceRawJobTest {
         when(jobRepository.save(any(Job.class))).thenReturn(testJob);
 
         RawJobEvent linkedInJob = RawJobEvent.builder()
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .title("Job 1")
                 .url("https://linkedin.com/1")
                 .build();
 
         RawJobEvent glassdoorJob = RawJobEvent.builder()
-                .source(Source.of("GLASSDOOR"))
+                .source(Source.GLASSDOOR)
                 .title("Job 2")
                 .url("https://glassdoor.com/2")
                 .build();
 
         RawJobEvent indeedJob = RawJobEvent.builder()
-                .source(Source.of("INDEED"))
+                .source(Source.INDEED)
                 .title("Job 3")
                 .url("https://indeed.com/3")
                 .build();
@@ -295,7 +295,7 @@ public class JobServiceRawJobTest {
         RawJobEvent eventWithDate = RawJobEvent.builder()
                 .title("Developer")
                 .url("https://example.com/job-date")
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .postedDate(dateString)
                 .build();
 

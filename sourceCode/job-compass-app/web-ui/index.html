@@ -395,9 +395,43 @@
                 triggerBtn.addEventListener('click', triggerScrape);
             }
 
+            // Auto-select text in skills/location inputs when focused to prevent duplication
+            const skillsInput = document.getElementById('skillsInput');
+            const locationInput = document.getElementById('locationInput');
+            if (skillsInput) {
+                skillsInput.addEventListener('focus', function () {
+                    this.select();
+                });
+            }
+            if (locationInput) {
+                locationInput.addEventListener('focus', function () {
+                    this.select();
+                });
+            }
+
             if (closeBtn) closeBtn.addEventListener('click', closeModal);
             window.addEventListener('click', (e) => {
                 if (e.target === modal) closeModal();
+            });
+        }
+
+        // Open Top 10 Jobs
+        function openTop10Jobs() {
+            // Get top 10 jobs based on current filters and sort
+            const top10 = filteredJobs.slice(0, 10);
+            if (top10.length === 0) {
+                alert('No jobs to open. Try adjusting your filters or trigger a scrape first.');
+                return;
+            }
+
+            const confirmed = confirm(`Open ${top10.length} jobs in new tabs?\n\nNote: Your browser may block popup windows.`);
+            if (!confirmed) return;
+
+            // Open each job in a new tab with a slight delay to avoid popup blocking
+            top10.forEach((job, index) => {
+                setTimeout(() => {
+                    window.open(job.url, '_blank');
+                }, index * 200); // 200ms delay between each
             });
         }
 
@@ -408,6 +442,11 @@
             const skills = document.getElementById('skillsInput').value;
             const location = document.getElementById('locationInput').value;
             const cookie = document.getElementById('authCookie').value;
+
+            if (!skills || skills.trim() === '') {
+                alert('⚠️ Please enter at least one skill to scrape for.');
+                return;
+            }
 
             btn.innerHTML = '<span>⏳</span> Scraping...';
             btn.disabled = true;
@@ -424,16 +463,23 @@
                 });
 
                 if (response.ok) {
-                    alert("Jobs will be processed in background.\n\nCheck back in a minute for new jobs.");
-                    setTimeout(loadJobs, 5000);
+                    // Show a more informative message
+                    const skillsList = skills.split(',').map(s => s.trim()).join(', ');
+                    alert(`✅ Scraping started!\n\nSkills: ${skillsList}\nLocation: ${location || 'Any'}\n\nJobs will be processed in the background.\nRefresh in 30-60 seconds to see new results.\n\nNote: Non-English jobs are automatically filtered out.`);
+
+                    // Auto-refresh after 30 seconds
+                    setTimeout(() => {
+                        loadJobs();
+                        alert('🔄 Jobs refreshed automatically. Check for new opportunities!');
+                    }, 30000);
                 } else {
                     const txt = await response.text();
                     console.error("Scrape failed:", txt);
-                    alert('❌ Failed to trigger scraping. Check console.');
+                    alert('❌ Failed to trigger scraping.\n\nError: ' + txt);
                 }
             } catch (error) {
                 console.error('Error triggering scrape:', error);
-                alert('⚠️ Error triggering scrape. Backend may be busy.');
+                alert('⚠️ Error triggering scrape.\n\nThe backend service may be busy or unavailable.\nPlease try again in a moment.');
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
@@ -480,7 +526,7 @@
                     job.title?.toLowerCase().includes(searchTerm) ||
                     job.companyName?.toLowerCase().includes(searchTerm) ||
                     job.location?.toLowerCase().includes(searchTerm);
-                const matchesSource = !sourceValue || job.source?.name === sourceValue;
+                const matchesSource = !sourceValue || job.source === sourceValue;
                 return matchesSearch && matchesSource;
             });
 
@@ -617,8 +663,14 @@
 
         // Create Job Card (Enhanced)
         function createJobCard(job, userSkills) {
-            const source = job.source?.name || 'Unknown';
-            const sourceClass = `source-${source.toLowerCase()}`;
+            // Map enum source values to display names
+            const sourceMap = {
+                'LINKEDIN': 'LinkedIn',
+                'GLASSDOOR': 'Glassdoor',
+                'INDEED': 'Indeed'
+            };
+            const source = sourceMap[job.source] || job.source || 'Unknown';
+            const sourceClass = `source-${(job.source || 'unknown').toLowerCase()}`;
             // Format Posted Date
             const postedRaw = job.postedDate ? new Date(job.postedDate) : null;
             const jobAge = postedRaw && !isNaN(postedRaw)

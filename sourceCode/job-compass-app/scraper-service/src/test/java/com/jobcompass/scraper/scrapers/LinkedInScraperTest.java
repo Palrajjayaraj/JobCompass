@@ -56,7 +56,8 @@ class LinkedInScraperTest {
         Source source = linkedInScraper.getSource();
 
         assertNotNull(source);
-        assertEquals("LinkedIn", source.name());
+        assertEquals(Source.LINKEDIN, source);
+        assertEquals("LinkedIn", source.getDisplayName());
     }
 
     @Test

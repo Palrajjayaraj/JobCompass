@@ -45,7 +45,7 @@ public class JobServiceDeDuplicationTest {
                 .title("Software Engineer")
                 .url("https://linkedin.com/jobs/view/123456")
                 .company("Tech Corp")
-                .source(Source.of("LinkedIn"))
+                .source(Source.fromString("LinkedIn"))
                 .jobAgeInDays(1)
                 .build();
     }

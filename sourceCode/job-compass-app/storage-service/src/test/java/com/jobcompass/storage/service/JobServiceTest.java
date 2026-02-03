@@ -60,7 +60,7 @@ public class JobServiceTest {
             .salary("$120k-150k")
             .url("https://example.com/job123")
             .postedDate(LocalDateTime.now().minusDays(3))
-            .source(Source.of("LINKEDIN"))
+            .source(Source.LINKEDIN)
             .jobAgeInDays(3)
             .build();
     }
@@ -104,7 +104,7 @@ public class JobServiceTest {
             .id(1L)
             .title("Old Title")
             .url("https://example.com/job123")
-            .source(Source.of("LINKEDIN"))
+            .source(Source.LINKEDIN)
             .isActive(false)
             .build();
 

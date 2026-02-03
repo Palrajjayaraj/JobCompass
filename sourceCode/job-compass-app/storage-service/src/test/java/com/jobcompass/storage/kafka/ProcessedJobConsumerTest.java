@@ -37,7 +37,7 @@ public class ProcessedJobConsumerTest {
     @Before
     public void setUp() {
         testEvent = ProcessedJobEvent.builder()
-                .source(Source.of("LinkedIn"))
+                .source(Source.fromString("LinkedIn"))
                 .title("Senior Java Developer")
                 .company("Google")  // Note: field name is company, not companyName in builder usually
                 .location("San Francisco, CA")

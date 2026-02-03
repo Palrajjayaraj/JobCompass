@@ -38,7 +38,7 @@ public class RawJobConsumerTest {
     public void setUp() {
         // Create test RawJobEvent
         testEvent = RawJobEvent.builder()
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .title("Senior Java Developer")
                 .company("Google")
                 .location("San Francisco, CA")
@@ -155,19 +155,19 @@ public class RawJobConsumerTest {
         when(jobService.saveRawJob(any(RawJobEvent.class))).thenReturn(testJob);
 
         RawJobEvent linkedInEvent = RawJobEvent.builder()
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .title("Job 1")
                 .url("https://linkedin.com/1")
                 .build();
 
         RawJobEvent glassdoorEvent = RawJobEvent.builder()
-                .source(Source.of("GLASSDOOR"))
+                .source(Source.GLASSDOOR)
                 .title("Job 2")
                 .url("https://glassdoor.com/2")
                 .build();
 
         RawJobEvent indeedEvent = RawJobEvent.builder()
-                .source(Source.of("INDEED"))
+                .source(Source.INDEED)
                 .title("Job 3")
                 .url("https://indeed.com/3")
                 .build();

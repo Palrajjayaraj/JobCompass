@@ -26,6 +26,6 @@ public class SourceConverter implements AttributeConverter<Source, String> {
         if (dbData == null || dbData.trim().isEmpty()) {
             return null;
         }
-        return Source.of(dbData);
+        return Source.fromString(dbData);
     }
 }

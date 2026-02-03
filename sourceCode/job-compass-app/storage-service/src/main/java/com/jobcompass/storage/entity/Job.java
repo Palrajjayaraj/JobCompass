@@ -32,7 +32,8 @@ import java.util.Set;
         @Index(name = "idx_job_company_id", columnList = "company_id"),
         @Index(name = "idx_job_source_external", columnList = "source, external_id"),
         @Index(name = "idx_job_is_active", columnList = "is_active"),
-        @Index(name = "idx_job_location", columnList = "location")
+        @Index(name = "idx_job_location", columnList = "location"),
+        @Index(name = "idx_job_language", columnList = "language")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Data
@@ -69,6 +70,7 @@ public class Job {
     @Column(name = "job_age_days")
     private Integer jobAgeDays;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "source", nullable = false, length = 50)
     private Source source;
 
@@ -87,6 +89,9 @@ public class Job {
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<JobApplication> applications = new ArrayList<>();
+
+    @Column(name = "language", length = 10)
+    private String language;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

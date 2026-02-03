@@ -64,7 +64,7 @@ public class JobControllerTest {
                 .url("https://example.com/job/1")
                 .postedDate(LocalDate.now())
                 .jobAgeDays(1)
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .scrapedAt(LocalDateTime.now())
                 .company(testCompany)
                 .skills(testSkills)
@@ -178,10 +178,10 @@ public class JobControllerTest {
     @Test
     public void testGetJobsBySource() {
         List<Job> jobs = Arrays.asList(testJob);
-        when(jobService.findBySource(Source.of("LINKEDIN"))).thenReturn(jobs);
+        when(jobService.findBySource(Source.LINKEDIN)).thenReturn(jobs);
         when(jobApplicationService.countApplicationsForJob(1L)).thenReturn(0L);
 
-        ResponseEntity<List<JobDto>> response = jobController.getJobsBySource(Source.of("LINKEDIN"));
+        ResponseEntity<List<JobDto>> response = jobController.getJobsBySource(Source.LINKEDIN);
 
         assertNotNull(response);
         assertEquals(200, response.getStatusCodeValue());
@@ -195,7 +195,7 @@ public class JobControllerTest {
                 .title("Test Job")
                 .company(null)
                 .skills(new HashSet<>())
-                .source(Source.of("LINKEDIN"))
+                .source(Source.LINKEDIN)
                 .build();
 
         List<Job> jobs = Arrays.asList(jobWithoutCompany);

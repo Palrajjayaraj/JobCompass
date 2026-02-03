@@ -243,6 +243,7 @@ public class JobService {
                 .description(event.getDescription())
                 .source(event.getSource())
                 .scrapedAt(event.getScrapedAt() != null ? event.getScrapedAt() : LocalDateTime.now())
+                .language(event.getLanguage())
                 .isActive(true);
 
         // Parse posted date
@@ -271,6 +272,7 @@ public class JobService {
         job.setTitle(event.getTitle());
         job.setLocation(event.getLocation());
         job.setDescription(event.getDescription());
+        job.setLanguage(event.getLanguage());
         job.setScrapedAt(event.getScrapedAt() != null ? event.getScrapedAt() : LocalDateTime.now());
         // Keep the job active when updating
         job.setIsActive(true);

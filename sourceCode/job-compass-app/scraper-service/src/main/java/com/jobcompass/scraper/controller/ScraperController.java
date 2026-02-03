@@ -65,7 +65,7 @@ public class ScraperController {
 
                 if (skills.isEmpty()) {
                     log.warn("No skills provided, performing general search");
-                    ScrapeParameters params = ScrapeParameters.withAuth(
+                    ScrapeParameters params = ScrapeParameters.withAuthLegacy(
                             request.getMaxJobAgeDays(),
                             request.getMaxResults(),
                             null,
@@ -79,7 +79,7 @@ public class ScraperController {
                 for (String skill : skills) {
                     try {
                         log.info("Scraping for skill: {}", skill);
-                        ScrapeParameters params = ScrapeParameters.withAuth(
+                        ScrapeParameters params = ScrapeParameters.withAuthLegacy(
                                 request.getMaxJobAgeDays(),
                                 request.getMaxResults(),
                                 skill.trim(),

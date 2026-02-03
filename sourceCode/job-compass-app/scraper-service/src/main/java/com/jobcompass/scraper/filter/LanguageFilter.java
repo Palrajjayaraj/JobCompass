@@ -7,9 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /**
- * Language detection filter to ensure only English job descriptions are
- * processed.
- * System requirement: All jobs must have English descriptions.
+ * Language detection service to identify the language of job descriptions.
+ * Returns ISO 639-1 language codes (en, de, fr, es, etc.) instead of filtering.
  * 
  * @author Palrajjayaraj
  */
@@ -35,42 +34,84 @@ public class LanguageFilter {
     }
 
     /**
+     * Detect the language of the given text and return ISO 639-1 code.
+     * 
+     * @param text the text to analyze (job description or title)
+     * @return language code ("en", "de", "fr", etc.) or "unknown" if detection
+     *         fails
+     */
+    public String detectLanguage(String text) {
+        if (text == null || text.trim().isEmpty()) {
+            log.warn("Empty text provided for language detection");
+            return "unknown";
+        }
+
+        // Need at least some content for reliable detection
+        if (text.trim().length() < 20) {
+            log.debug("Text too short for reliable language detection ({}), returning unknown", text.trim().length());
+            return "unknown";
+        }
+
+        try {
+            Language detectedLanguage = detector.detectLanguageOf(text);
+            String languageCode = mapToLanguageCode(detectedLanguage);
+
+            log.debug("Detected language: {} (code: {}) for text length: {}",
+                    detectedLanguage, languageCode, text.length());
+
+            return languageCode;
+        } catch (Exception e) {
+            log.error("Error detecting language", e);
+            return "unknown";
+        }
+    }
+
+    /**
+     * Map Lingua Language enum to ISO 639-1 language codes.
+     * 
+     * @param language the detected language
+     * @return ISO 639-1 code (en, de, fr, etc.)
+     */
+    private String mapToLanguageCode(Language language) {
+        if (language == null) {
+            return "unknown";
+        }
+
+        switch (language) {
+            case ENGLISH:
+                return "en";
+            case GERMAN:
+                return "de";
+            case FRENCH:
+                return "fr";
+            case SPANISH:
+                return "es";
+            case ITALIAN:
+                return "it";
+            case DUTCH:
+                return "nl";
+            case PORTUGUESE:
+                return "pt";
+            default:
+                return "unknown";
+        }
+    }
+
+    /**
      * Check if the given text is in English.
-     * System requirement: Only English job descriptions are allowed.
+     * Kept for backward compatibility with existing code/tests.
      * 
      * @param text the text to check (job description or title)
      * @return true if text is in English, false otherwise
      */
     public boolean isEnglish(String text) {
-        if (text == null || text.trim().isEmpty()) {
-            log.warn("Empty text provided for language detection");
-            return false;
-        }
-
-        // Need at least some content for reliable detection
-        if (text.trim().length() < 20) {
-            log.debug("Text too short for reliable language detection, defaulting to false");
-            return false;
-        }
-
-        try {
-            Language detectedLanguage = detector.detectLanguageOf(text);
-            boolean isEnglish = detectedLanguage == Language.ENGLISH;
-
-            if (!isEnglish) {
-                log.info("Non-English content detected: {} (length: {})",
-                        detectedLanguage, text.length());
-            }
-
-            return isEnglish;
-        } catch (Exception e) {
-            log.error("Error detecting language", e);
-            return false; // Fail safe: reject if we can't determine language
-        }
+        String languageCode = detectLanguage(text);
+        return "en".equals(languageCode);
     }
 
     /**
      * Validate job description is in English.
+     * Kept for backward compatibility.
      * 
      * @param description the job description
      * @return true if description is in English

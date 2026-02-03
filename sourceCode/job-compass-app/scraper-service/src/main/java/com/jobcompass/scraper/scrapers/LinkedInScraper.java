@@ -27,7 +27,7 @@ import java.util.Random;
 public class LinkedInScraper implements JobScraper {
 
     private static final Logger log = LoggerFactory.getLogger(LinkedInScraper.class);
-    private static final Source SOURCE = Source.of("LinkedIn");
+    private static final Source SOURCE = Source.LINKEDIN;
 
     private final Browser browser;
     private final SeleniumProperties properties; // Reusing props for user agents
@@ -66,20 +66,17 @@ public class LinkedInScraper implements JobScraper {
         try (BrowserContext context = browser.newContext(contextOptions)) {
 
             // Inject authentication cookie if provided
-            if (parameters.authentication() != null && parameters.authentication().containsKey("LINKEDIN")) {
-                java.util.Map<String, String> linkedInAuth = parameters.authentication().get("LINKEDIN");
-                if (linkedInAuth != null && linkedInAuth.containsKey("li_at")) {
-                    String liAt = linkedInAuth.get("li_at");
-                    if (liAt != null && !liAt.isEmpty()) {
+            parameters.getAuthFor(Source.LINKEDIN)
+                    .filter(auth -> auth instanceof com.jobcompass.common.model.authentication.LinkedInAuthentication)
+                    .map(auth -> (com.jobcompass.common.model.authentication.LinkedInAuthentication) auth)
+                    .ifPresent(auth -> {
                         log.info("Injecting authentication cookie for LinkedIn");
                         context.addCookies(List.of(
-                                new com.microsoft.playwright.options.Cookie("li_at", liAt)
+                                new com.microsoft.playwright.options.Cookie("li_at", auth.liAt())
                                         .setDomain(".www.linkedin.com")
                                         .setPath("/")
                                         .setSecure(true)));
-                    }
-                }
-            }
+                    });
 
             Page page = context.newPage();
 
@@ -249,11 +246,13 @@ public class LinkedInScraper implements JobScraper {
                 }
             }
 
-            // Language filtering on FULL description
-            if (!description.isEmpty() && !languageFilter.isEnglish(description)) {
-                log.info("Filtered non-English job: '{}' at {} (detected from full description)", title, company);
-                return null;
+            // Language detection on FULL description
+            String detectedLanguage = "unknown";
+            if (!description.isEmpty()) {
+                detectedLanguage = languageFilter.detectLanguage(description);
+                log.debug("Detected language '{}' for job: '{}' at {}", detectedLanguage, title, company);
             }
+
             return RawJobEvent.builder()
                     .source(SOURCE)
                     .title(title)
@@ -263,6 +262,7 @@ public class LinkedInScraper implements JobScraper {
                     .url(url)
                     .postedDate(postedDate)
                     .scrapedAt(LocalDateTime.now())
+                    .language(detectedLanguage)
                     .build();
 
         } catch (Exception e) {

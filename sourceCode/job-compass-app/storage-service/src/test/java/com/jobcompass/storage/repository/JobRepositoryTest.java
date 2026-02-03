@@ -64,7 +64,7 @@ public class JobRepositoryTest {
             .salaryRange("$120k-150k")
             .postedDate(LocalDate.now().minusDays(3))
             .jobAgeDays(3)
-            .source(Source.of("LINKEDIN"))
+            .source(Source.LINKEDIN)
             .scrapedAt(LocalDateTime.now())
             .company(testCompany)
             .isActive(true)
@@ -79,7 +79,7 @@ public class JobRepositoryTest {
             .salaryRange("$100k-130k")
             .postedDate(LocalDate.now().minusDays(10))
             .jobAgeDays(10)
-            .source(Source.of("GLASSDOOR"))
+            .source(Source.GLASSDOOR)
             .scrapedAt(LocalDateTime.now())
             .company(testCompany)
             .isActive(true)
@@ -104,7 +104,7 @@ public class JobRepositoryTest {
      */
     @Test
     public void testFindBySourceAndExternalId() {
-        Optional<Job> found = jobRepository.findBySourceAndExternalId(Source.of("LINKEDIN"), "ext-123");
+        Optional<Job> found = jobRepository.findBySourceAndExternalId(Source.LINKEDIN, "ext-123");
         assertTrue(found.isPresent());
         assertEquals("Senior Java Developer", found.get().getTitle());
     }
@@ -123,7 +123,7 @@ public class JobRepositoryTest {
      */
     @Test
     public void testFindBySourceAndIsActive() {
-        List<Job> jobs = jobRepository.findBySourceAndIsActive(Source.of("LINKEDIN"), true);
+        List<Job> jobs = jobRepository.findBySourceAndIsActive(Source.LINKEDIN, true);
         assertEquals(1, jobs.size());
         assertEquals("Senior Java Developer", jobs.get(0).getTitle());
     }
@@ -166,7 +166,7 @@ public class JobRepositoryTest {
         Job duplicateJob = Job.builder()
             .title("Duplicate Job")
             .url("https://example.com/job1")  // Same URL as testJob1
-            .source(Source.of("LINKEDIN"))
+            .source(Source.LINKEDIN)
             .scrapedAt(LocalDateTime.now())
             .isActive(true)
             .build();
