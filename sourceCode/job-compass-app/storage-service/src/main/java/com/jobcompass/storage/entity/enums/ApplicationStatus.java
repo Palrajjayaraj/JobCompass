@@ -11,32 +11,37 @@ public enum ApplicationStatus {
      * Application has been submitted
      */
     APPLIED,
-    
+
     /**
      * Application is under review
      */
     UNDER_REVIEW,
-    
+
     /**
      * Candidate is in the interview process
      */
     INTERVIEWING,
-    
+
     /**
      * Job offer has been extended
      */
     OFFER,
-    
+
     /**
      * Application was rejected
      */
     REJECTED,
-    
+
     /**
      * Candidate withdrew application
      */
     WITHDRAWN,
-    
+
+    /**
+     * Job dismissed as not relevant/interested
+     */
+    NOT_INTERESTED,
+
     /**
      * Candidate accepted the offer
      */

@@ -5,17 +5,17 @@ import com.jobcompass.common.model.Source;
 import com.jobcompass.storage.entity.Company;
 import com.jobcompass.storage.entity.Job;
 import com.jobcompass.storage.repository.JobRepository;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.*;
  * 
  * @author Palrajjayaraj
  */
-@RunWith(MockitoJUnitRunner.class)
+@ExtendWith(MockitoExtension.class)
 public class JobServiceTest {
 
     @Mock
@@ -46,23 +46,23 @@ public class JobServiceTest {
     /**
      * Set up test data before each test.
      */
-    @Before
+    @BeforeEach
     public void setUp() {
         testCompany = Company.builder()
-            .id(1L)
-            .name("Google")
-            .build();
+                .id(1L)
+                .name("Google")
+                .build();
 
         testEvent = ProcessedJobEvent.builder()
-            .title("Senior Java Developer")
-            .company("Google")
-            .location("San Francisco, CA")
-            .salary("$120k-150k")
-            .url("https://example.com/job123")
-            .postedDate(LocalDateTime.now().minusDays(3))
-            .source(Source.LINKEDIN)
-            .jobAgeInDays(3)
-            .build();
+                .title("Senior Java Developer")
+                .company("Google")
+                .location("San Francisco, CA")
+                .salary("$120k-150k")
+                .url("https://example.com/job123")
+                .postedDate(LocalDateTime.now().minusDays(3))
+                .source(Source.LINKEDIN)
+                .jobAgeInDays(3)
+                .build();
     }
 
     /**
@@ -95,47 +95,15 @@ public class JobServiceTest {
     }
 
     /**
-     * Test updating an existing job from ProcessedJobEvent.
-     */
-    @Test
-    public void testSaveOrUpdateJob_ExistingJob() {
-        // Arrange
-        Job existingJob = Job.builder()
-            .id(1L)
-            .title("Old Title")
-            .url("https://example.com/job123")
-            .source(Source.LINKEDIN)
-            .isActive(false)
-            .build();
-
-        when(jobRepository.findByUrl(testEvent.getUrl())).thenReturn(Optional.of(existingJob));
-        when(companyService.findOrCreateCompany("Google")).thenReturn(testCompany);
-        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        // Act
-        Job updatedJob = jobService.saveOrUpdateJob(testEvent);
-
-        // Assert
-        assertNotNull(updatedJob);
-        assertEquals(1L, updatedJob.getId().longValue());
-        assertEquals("Senior Java Developer", updatedJob.getTitle());  // Updated title
-        assertTrue(updatedJob.getIsActive());  // Reactivated
-
-        verify(jobRepository, times(1)).findByUrl(testEvent.getUrl());
-        verify(companyService, times(1)).findOrCreateCompany("Google");
-        verify(jobRepository, times(1)).save(any(Job.class));
-    }
-
-    /**
      * Test finding job by URL.
      */
     @Test
     public void testFindByUrl() {
         // Arrange
         Job testJob = Job.builder()
-            .id(1L)
-            .url("https://example.com/job123")
-            .build();
+                .id(1L)
+                .url("https://example.com/job123")
+                .build();
 
         when(jobRepository.findByUrl("https://example.com/job123")).thenReturn(Optional.of(testJob));
 
@@ -150,16 +118,56 @@ public class JobServiceTest {
     }
 
     /**
+     * Test updating an existing job from ProcessedJobEvent.
+     */
+    @Test
+    public void testSaveOrUpdateJob_ExistingJob() {
+        // Arrange
+        // Existing job scraped in the past
+        LocalDateTime oldScrapeTime = LocalDateTime.now().minusDays(1);
+        Job existingJob = Job.builder()
+                .id(1L)
+                .title("Old Title")
+                .url("https://example.com/job123")
+                .source(Source.LINKEDIN)
+                .isActive(false)
+                .scrapedAt(oldScrapeTime)
+                .build();
+
+        when(jobRepository.findByUrl(testEvent.getUrl())).thenReturn(Optional.of(existingJob));
+        when(companyService.findOrCreateCompany("Google")).thenReturn(testCompany);
+        // Capture the argument passed to save
+        when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        Job updatedJob = jobService.saveOrUpdateJob(testEvent);
+
+        // Assert
+        assertNotNull(updatedJob);
+        assertEquals(1L, updatedJob.getId().longValue());
+        assertEquals("Senior Java Developer", updatedJob.getTitle()); // Updated title
+        assertTrue(updatedJob.getIsActive()); // Reactivated
+
+        // Verify scrapedAt was updated (should be after oldScrapeTime)
+        assertNotNull(updatedJob.getScrapedAt());
+        assertTrue(updatedJob.getScrapedAt().isAfter(oldScrapeTime), "ScrapedAt should be updated to recent time");
+
+        verify(jobRepository, times(1)).findByUrl(testEvent.getUrl());
+        verify(companyService, times(1)).findOrCreateCompany("Google");
+        verify(jobRepository, times(1)).save(any(Job.class));
+    }
+
+    /**
      * Test deactivating a job.
      */
     @Test
     public void testDeactivateJob() {
         // Arrange
         Job testJob = Job.builder()
-            .id(1L)
-            .title("Test Job")
-            .isActive(true)
-            .build();
+                .id(1L)
+                .title("Test Job")
+                .isActive(true)
+                .build();
 
         when(jobRepository.findById(1L)).thenReturn(Optional.of(testJob));
         when(jobRepository.save(any(Job.class))).thenAnswer(invocation -> invocation.getArgument(0));

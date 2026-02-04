@@ -119,7 +119,8 @@ public class LinkedInScraper implements JobScraper {
                 try {
                     // Get handle to the nth card
                     Locator card = jobCards.nth(i);
-                    RawJobEvent job = extractJobFromCard(page, card);
+                    // Pass context to open new tabs for details
+                    RawJobEvent job = extractJobFromCard(context, page, card);
                     if (job != null) {
                         jobs.add(job);
                         count++;
@@ -172,29 +173,28 @@ public class LinkedInScraper implements JobScraper {
     }
 
     /**
-     * Fetch full job description by navigating to the job details page.
-     * This is more reliable than using snippets for language detection.
-     * 
-     * @param page   the current browser page
-     * @param jobUrl the job URL to fetch
-     * @return the full job description text, or empty string if unavailable
+     * Fetch full job description by opening a NEW page/tab.
+     * This prevents navigating the main list page away.
      */
-    private String fetchFullDescription(Page page, String jobUrl) {
+    private String fetchFullDescription(BrowserContext context, String jobUrl) {
+        Page detailPage = null;
         try {
+            detailPage = context.newPage();
+
             // Navigate to job details page
-            page.navigate(jobUrl, new Page.NavigateOptions().setTimeout(30000));
+            detailPage.navigate(jobUrl, new Page.NavigateOptions().setTimeout(30000));
 
             // Wait for description to load
-            page.waitForSelector("div.description__text, div.show-more-less-html__markup",
+            detailPage.waitForSelector("div.description__text, div.show-more-less-html__markup",
                     new Page.WaitForSelectorOptions().setTimeout(10000));
 
             // Try multiple selectors for job description
-            Locator descLocator = page.locator("div.description__text").first();
+            Locator descLocator = detailPage.locator("div.description__text").first();
             if (descLocator.count() == 0) {
-                descLocator = page.locator("div.show-more-less-html__markup").first();
+                descLocator = detailPage.locator("div.show-more-less-html__markup").first();
             }
             if (descLocator.count() == 0) {
-                descLocator = page.locator("div.jobs-description").first();
+                descLocator = detailPage.locator("div.jobs-description").first();
             }
 
             if (descLocator.count() > 0) {
@@ -207,25 +207,53 @@ public class LinkedInScraper implements JobScraper {
         } catch (Exception e) {
             log.warn("Failed to fetch full description from {}: {}", jobUrl, e.getMessage());
             return "";
+        } finally {
+            if (detailPage != null) {
+                try {
+                    detailPage.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
         }
     }
 
     /**
      * Extract job details from a LinkedIn job card locator
      */
-    private RawJobEvent extractJobFromCard(Page page, Locator card) {
+    private RawJobEvent extractJobFromCard(BrowserContext context, Page page, Locator card) {
         try {
-            // Use .first() to handle cases where multiple elements match (though usually
-            // one per card)
-            String title = card.locator("h3.base-search-card__title").first().innerText().trim();
-            String company = card.locator("h4.base-search-card__subtitle").first().innerText().trim();
-            String location = card.locator("span.job-search-card__location").first().innerText().trim();
-            String url = card.locator("a.base-card__full-link").first().getAttribute("href");
+            // Title
+            String title = extractText(card, "h3.base-search-card__title", "a.base-search-card__full-link",
+                    ".job-search-card__title");
+            if (title.isEmpty()) {
+                log.warn("Could not extract title from card");
+                return null;
+            }
 
-            // Fetch FULL description by navigating to job page
-            String description = fetchFullDescription(page, url);
+            // Company
+            String company = extractText(card, "h4.base-search-card__subtitle", "a.hidden-nested-link",
+                    ".job-search-card__subtitle", ".base-search-card__subtitle");
+            if (company.isEmpty()) {
+                log.warn("Could not extract company for job: {}", title);
+                // company = "Unknown Company"; // Let's keep it empty to let fallback verify?
+                // No, better to extract correctly.
+            }
 
-            // If full description fetch fails, fall back to snippet
+            // Location
+            String location = extractText(card, "span.job-search-card__location", ".job-search-card__location");
+
+            // URL
+            String url = extractAttribute(card, "href", "a.base-search-card__full-link", "a.base-card__full-link", "a");
+            if (url.isEmpty()) {
+                log.warn("Could not extract URL for job: {}", title);
+                return null;
+            }
+
+            // Fetch FULL description by opening new page
+            String description = fetchFullDescription(context, url);
+
+            // If full description fetch fails, fall back to snippet from the LIST page
             if (description.isEmpty()) {
                 if (card.locator("p.base-search-card__snippet").count() > 0
                         && card.locator("p.base-search-card__snippet").first().isVisible()) {
@@ -238,11 +266,13 @@ public class LinkedInScraper implements JobScraper {
 
             // Posted date
             String postedDate = "Recently";
-            Locator timeParams = card.locator("time");
-            if (timeParams.count() > 0) {
-                postedDate = timeParams.first().getAttribute("datetime");
-                if (postedDate == null) {
-                    postedDate = timeParams.first().innerText().trim();
+            String dateAttr = extractAttribute(card, "datetime", "time");
+            if (!dateAttr.isEmpty()) {
+                postedDate = dateAttr;
+            } else {
+                String dateText = extractText(card, "time");
+                if (!dateText.isEmpty()) {
+                    postedDate = dateText;
                 }
             }
 
@@ -266,8 +296,42 @@ public class LinkedInScraper implements JobScraper {
                     .build();
 
         } catch (Exception e) {
-            // log.debug("Could not parse card: {}", e.getMessage());
+            log.warn("Could not parse card: {}", e.getMessage());
             return null;
         }
+    }
+
+    private String extractText(Locator card, String... selectors) {
+        for (String selector : selectors) {
+            try {
+                Locator loc = card.locator(selector).first();
+                if (loc.count() > 0) {
+                    String text = loc.innerText().trim();
+                    if (!text.isEmpty()) {
+                        return text;
+                    }
+                }
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        return "";
+    }
+
+    private String extractAttribute(Locator card, String attribute, String... selectors) {
+        for (String selector : selectors) {
+            try {
+                Locator loc = card.locator(selector).first();
+                if (loc.count() > 0) {
+                    String val = loc.getAttribute(attribute);
+                    if (val != null && !val.isEmpty()) {
+                        return val;
+                    }
+                }
+            } catch (Exception e) {
+                // ignore
+            }
+        }
+        return "";
     }
 }

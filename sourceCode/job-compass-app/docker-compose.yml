@@ -80,16 +80,13 @@ services:
 
   web-ui:
     build:
-      context: ./web-ui
+      context: ./web-ui-svelte
       dockerfile: Dockerfile
     depends_on:
       - storage-service
       - scraper-service
     ports:
-      - "8085:8085" # User requested unused port in 8xxx range
-    environment:
-      STORAGE_SERVICE_URL: http://storage-service:8081
-      SCRAPER_SERVICE_URL: http://scraper-service:8082
+      - "8085:8085"
     networks:
       - jobcompass-network
 
