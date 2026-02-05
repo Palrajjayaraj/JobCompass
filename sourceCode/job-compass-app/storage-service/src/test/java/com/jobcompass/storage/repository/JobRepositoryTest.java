@@ -49,41 +49,41 @@ public class JobRepositoryTest {
     public void setUp() {
         // Create test company
         testCompany = Company.builder()
-            .name("Test Company")
-            .industry("Technology")
-            .build();
+                .name("Test Company")
+                .industry("Technology")
+                .build();
         testCompany = companyRepository.save(testCompany);
 
         // Create test jobs
         testJob1 = Job.builder()
-            .externalId("ext-123")
-            .title("Senior Java Developer")
-            .description("Java development role")
-            .location("San Francisco, CA")
-            .url("https://example.com/job1")
-            .salaryRange("$120k-150k")
-            .postedDate(LocalDate.now().minusDays(3))
-            .jobAgeDays(3)
-            .source(Source.LINKEDIN)
-            .scrapedAt(LocalDateTime.now())
-            .company(testCompany)
-            .isActive(true)
-            .build();
+                .externalId("ext-123")
+                .title("Senior Java Developer")
+                .description("Java development role")
+                .location("San Francisco, CA")
+                .url("https://example.com/job1")
+                .salaryRange("$120k-150k")
+                .postedDate(LocalDate.now().minusDays(3))
+                .jobAgeDays(3)
+                .source(Source.LINKEDIN)
+                .scrapedAt(LocalDateTime.now())
+                .company(testCompany)
+                .isActive(true)
+                .build();
 
         testJob2 = Job.builder()
-            .externalId("ext-456")
-            .title("Python Developer")
-            .description("Python development role")
-            .location("Remote")
-            .url("https://example.com/job2")
-            .salaryRange("$100k-130k")
-            .postedDate(LocalDate.now().minusDays(10))
-            .jobAgeDays(10)
-            .source(Source.GLASSDOOR)
-            .scrapedAt(LocalDateTime.now())
-            .company(testCompany)
-            .isActive(true)
-            .build();
+                .externalId("ext-456")
+                .title("Python Developer")
+                .description("Python development role")
+                .location("Remote")
+                .url("https://example.com/job2")
+                .salaryRange("$100k-130k")
+                .postedDate(LocalDate.now().minusDays(10))
+                .jobAgeDays(10)
+                .source(Source.GLASSDOOR)
+                .scrapedAt(LocalDateTime.now())
+                .company(testCompany)
+                .isActive(true)
+                .build();
 
         jobRepository.save(testJob1);
         jobRepository.save(testJob2);
@@ -164,14 +164,14 @@ public class JobRepositoryTest {
     @Test(expected = Exception.class)
     public void testUrlUniquenessConstraint() {
         Job duplicateJob = Job.builder()
-            .title("Duplicate Job")
-            .url("https://example.com/job1")  // Same URL as testJob1
-            .source(Source.LINKEDIN)
-            .scrapedAt(LocalDateTime.now())
-            .isActive(true)
-            .build();
+                .title("Duplicate Job")
+                .url("https://example.com/job1") // Same URL as testJob1
+                .source(Source.LINKEDIN)
+                .scrapedAt(LocalDateTime.now())
+                .isActive(true)
+                .build();
 
         jobRepository.save(duplicateJob);
-        entityManager.flush();  // Force database constraint check
+        entityManager.flush(); // Force database constraint check
     }
 }

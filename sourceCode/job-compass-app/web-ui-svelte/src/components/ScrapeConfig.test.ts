@@ -20,7 +20,7 @@ describe('ScrapeConfig', () => {
 
         expect(screen.getByLabelText(/Skills/i)).toBeInTheDocument();
         expect(screen.getByLabelText(/Location/i)).toBeInTheDocument();
-        expect(screen.getByLabelText(/Max Results/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/LinkedIn Authentication/i)).toBeInTheDocument();
     });
 
     it('should render submit button', () => {
@@ -33,10 +33,13 @@ describe('ScrapeConfig', () => {
     it('should show validation error if skills empty', async () => {
         render(ScrapeConfig);
 
-        const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
-        await fireEvent.click(submitButton);
+        // Use fireEvent.submit to bypass HTML5 'required' validation and test handler logic
+        const form = screen.getByRole('button', { name: /Trigger Scrape/i }).closest('form');
+        await fireEvent.submit(form!);
 
-        expect(screen.getByText(/Skills field is required/i)).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/Skills field is required/i)).toBeInTheDocument();
+        });
     });
 
     it('should show validation error if location empty', async () => {
@@ -45,10 +48,13 @@ describe('ScrapeConfig', () => {
         const skillsInput = screen.getByLabelText(/Skills/i);
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
 
-        const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
-        await fireEvent.click(submitButton);
+        // Use fireEvent.submit to bypass HTML5 'required' validation for remaining empty fields
+        const form = screen.getByRole('button', { name: /Trigger Scrape/i }).closest('form');
+        await fireEvent.submit(form!);
 
-        expect(screen.getByText(/Location field is required/i)).toBeInTheDocument();
+        await waitFor(() => {
+            expect(screen.getByText(/Location field is required/i)).toBeInTheDocument();
+        });
     });
 
     it('should call API with correct params on submit', async () => {
@@ -58,21 +64,26 @@ describe('ScrapeConfig', () => {
 
         const skillsInput = screen.getByLabelText(/Skills/i);
         const locationInput = screen.getByLabelText(/Location/i);
-        const maxResultsInput = screen.getByLabelText(/Max Results/i);
+        const authInput = screen.getByLabelText(/LinkedIn Authentication/i);
 
         await fireEvent.input(skillsInput, { target: { value: 'Java Spring Boot' } });
         await fireEvent.input(locationInput, { target: { value: 'Germany' } });
-        await fireEvent.input(maxResultsInput, { target: { value: '30' } });
+        await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
 
         const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
-        await fireEvent.click(submitButton);
+        await fireEvent.click(submitButton); // Valid form, click works
 
         await waitFor(() => {
             expect(jobApi.triggerScrape).toHaveBeenCalledWith({
                 skills: 'Java Spring Boot',
                 location: 'Germany',
-                maxResults: 30,
-                sources: ['LINKEDIN']
+                maxResults: 1000,
+                sources: ['LINKEDIN'],
+                authentication: {
+                    'LINKEDIN': {
+                        'li_at': 'dummy-cookie'
+                    }
+                }
             });
         });
     });
@@ -84,9 +95,11 @@ describe('ScrapeConfig', () => {
 
         const skillsInput = screen.getByLabelText(/Skills/i);
         const locationInput = screen.getByLabelText(/Location/i);
+        const authInput = screen.getByLabelText(/LinkedIn Authentication/i);
 
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
         await fireEvent.input(locationInput, { target: { value: 'Berlin' } });
+        await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
 
         const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
         await fireEvent.click(submitButton);
@@ -105,9 +118,11 @@ describe('ScrapeConfig', () => {
 
         const skillsInput = screen.getByLabelText(/Skills/i);
         const locationInput = screen.getByLabelText(/Location/i);
+        const authInput = screen.getByLabelText(/LinkedIn Authentication/i);
 
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
         await fireEvent.input(locationInput, { target: { value: 'Berlin' } });
+        await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
 
         const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
         await fireEvent.click(submitButton);
@@ -126,9 +141,11 @@ describe('ScrapeConfig', () => {
 
         const skillsInput = screen.getByLabelText(/Skills/i) as HTMLInputElement;
         const locationInput = screen.getByLabelText(/Location/i) as HTMLInputElement;
+        const authInput = screen.getByLabelText(/LinkedIn Authentication/i) as HTMLInputElement;
 
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
         await fireEvent.input(locationInput, { target: { value: 'Berlin' } });
+        await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
 
         const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
         await fireEvent.click(submitButton);
@@ -141,6 +158,7 @@ describe('ScrapeConfig', () => {
         // Inputs should be disabled
         expect(skillsInput.disabled).toBe(true);
         expect(locationInput.disabled).toBe(true);
+        expect(authInput.disabled).toBe(true);
     });
 
     it('should auto-select input text on focus', async () => {
@@ -160,23 +178,25 @@ describe('ScrapeConfig', () => {
         expect(selectSpy).toHaveBeenCalled();
     });
 
-    it('should use default maxResults of 50', async () => {
+    it('should use fixed maxResults of 1000', async () => {
         (jobApi.triggerScrape as any).mockResolvedValue(undefined);
 
         render(ScrapeConfig);
 
         const skillsInput = screen.getByLabelText(/Skills/i);
         const locationInput = screen.getByLabelText(/Location/i);
+        const authInput = screen.getByLabelText(/LinkedIn Authentication/i);
 
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
         await fireEvent.input(locationInput, { target: { value: 'Germany' } });
+        await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
 
         const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
         await fireEvent.click(submitButton);
 
         await waitFor(() => {
             expect(jobApi.triggerScrape).toHaveBeenCalledWith(
-                expect.objectContaining({ maxResults: 50 })
+                expect.objectContaining({ maxResults: 1000 })
             );
         });
     });

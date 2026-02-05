@@ -14,7 +14,21 @@ This workflow redeploys the JobCompass application with the latest code changes 
 ## Steps
 
 // turbo
-1. Stop all running containers (keeps volumes intact)
+1. Run Backend Tests (Spring Boot)
+```bash
+cd /Users/palrajjayaraj/Documents/GitHub/HobbyProjects/JobCompass/sourceCode/job-compass-app
+docker run --rm -v $(pwd):/app -v $HOME/.m2:/root/.m2 -w /app maven:3.9-eclipse-temurin-21 mvn test
+```
+
+// turbo
+2. Run Frontend Tests (Svelte/Vitest)
+```bash
+cd /Users/palrajjayaraj/Documents/GitHub/HobbyProjects/JobCompass/sourceCode/job-compass-app/web-ui-svelte
+docker run --rm -v $(pwd):/app -w /app node:20-alpine /bin/sh -c "npm ci && npm test -- --run"
+```
+
+// turbo
+3. Stop all running containers (keeps volumes intact)
 ```bash
 cd /Users/palrajjayaraj/Documents/GitHub/HobbyProjects/JobCompass/sourceCode/job-compass-app
 docker-compose down

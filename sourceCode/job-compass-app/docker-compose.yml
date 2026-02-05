@@ -75,6 +75,7 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/jobcompass
       SPRING_DATASOURCE_USERNAME: jobcompass
       SPRING_DATASOURCE_PASSWORD: password
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: 'false'
     networks:
       - jobcompass-network
 

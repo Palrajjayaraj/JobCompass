@@ -73,7 +73,7 @@ public class LinkedInScraper implements JobScraper {
                         log.info("Injecting authentication cookie for LinkedIn");
                         context.addCookies(List.of(
                                 new com.microsoft.playwright.options.Cookie("li_at", auth.liAt())
-                                        .setDomain(".www.linkedin.com")
+                                        .setDomain(".linkedin.com")
                                         .setPath("/")
                                         .setSecure(true)));
                     });
@@ -89,18 +89,37 @@ public class LinkedInScraper implements JobScraper {
             // Wait for job cards to appear - robust wait
             try {
                 // Try multiple selectors as LinkedIn changes them frequently
-                page.waitForSelector("div.base-card, ul.jobs-search__results-list li",
+                page.waitForSelector(
+                        "div.job-card-container, li.occludable-update, div.occludable-update, div.base-card, ul.jobs-search__results-list li",
                         new Page.WaitForSelectorOptions().setTimeout(15000));
             } catch (Exception e) {
-                log.warn("Timeout waiting for job cards. Page might be empty, blocked, or slow.");
+                log.warn(
+                        "Timeout waiting for job cards. Page might be empty, blocked, or slow. Check debug_scrape_error.png");
+                try {
+                    page.screenshot(new Page.ScreenshotOptions()
+                            .setPath(java.nio.file.Paths.get("/app/debug_scrape_error.png")));
+                } catch (Exception ex) {
+                    log.warn("Failed to capture screenshot: {}", ex.getMessage());
+                }
             }
 
             // Scroll to load lazy content
             scrollToBottom(page);
 
             // Find all job cards using Playwright Locator
-            Locator jobCards = page.locator("div.base-card");
+            // Find all job cards using Playwright Locator
+            Locator jobCards = page.locator("div.job-card-container");
             int cardCount = jobCards.count();
+
+            if (cardCount == 0) {
+                jobCards = page.locator("li.occludable-update");
+                cardCount = jobCards.count();
+            }
+
+            if (cardCount == 0) {
+                jobCards = page.locator("div.base-card");
+                cardCount = jobCards.count();
+            }
 
             if (cardCount == 0) {
                 // Fallback selector for some LinkedIn views (e.g. guest view list)
@@ -225,7 +244,7 @@ public class LinkedInScraper implements JobScraper {
         try {
             // Title
             String title = extractText(card, "h3.base-search-card__title", "a.base-search-card__full-link",
-                    ".job-search-card__title");
+                    ".job-search-card__title", ".job-card-list__title", "strong", ".artdeco-entity-lockup__title");
             if (title.isEmpty()) {
                 log.warn("Could not extract title from card");
                 return null;
@@ -233,7 +252,8 @@ public class LinkedInScraper implements JobScraper {
 
             // Company
             String company = extractText(card, "h4.base-search-card__subtitle", "a.hidden-nested-link",
-                    ".job-search-card__subtitle", ".base-search-card__subtitle");
+                    ".job-search-card__subtitle", ".base-search-card__subtitle",
+                    ".job-card-container__primary-description", ".artdeco-entity-lockup__subtitle");
             if (company.isEmpty()) {
                 log.warn("Could not extract company for job: {}", title);
                 // company = "Unknown Company"; // Let's keep it empty to let fallback verify?
@@ -241,13 +261,26 @@ public class LinkedInScraper implements JobScraper {
             }
 
             // Location
-            String location = extractText(card, "span.job-search-card__location", ".job-search-card__location");
+            String location = extractText(card, "span.job-search-card__location", ".job-search-card__location",
+                    ".job-card-container__metadata-item", ".job-card-container__secondary-description",
+                    ".artdeco-entity-lockup__caption");
 
             // URL
-            String url = extractAttribute(card, "href", "a.base-search-card__full-link", "a.base-card__full-link", "a");
+            String url = extractAttribute(card, "href", "a.base-search-card__full-link", "a.base-card__full-link",
+                    "a.job-card-list__title", "a");
             if (url.isEmpty()) {
                 log.warn("Could not extract URL for job: {}", title);
                 return null;
+            }
+
+            // Fix relative URLs
+            if (url.startsWith("/")) {
+                url = "https://www.linkedin.com" + url;
+            }
+
+            // Clean URL (remove query parameters)
+            if (url.contains("?")) {
+                url = url.substring(0, url.indexOf("?"));
             }
 
             // Fetch FULL description by opening new page

@@ -19,7 +19,7 @@ CREATE TABLE jobs (
 );
 
 -- Create unique index on external_id (can be null for some sources)
-CREATE UNIQUE INDEX idx_job_external_id ON jobs(external_id) WHERE external_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_job_external_id ON jobs(external_id);
 
 -- Create unique index on url for duplicate detection
 CREATE UNIQUE INDEX idx_job_url ON jobs(url);
