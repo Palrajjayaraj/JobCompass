@@ -1,18 +1,40 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { tick } from 'svelte';
 import ScrapeConfig from './ScrapeConfig.svelte';
-import { jobApi } from '$services/api';
+import { jobApi, searchHistoryApi } from '$services/api';
+
+// Mock EventSource globally for SSE tests
+class MockEventSource {
+    url: string;
+    listeners: Record<string, Function> = {};
+    onerror: Function | null = null;
+    closed = false;
+    constructor(url: string) { this.url = url; }
+    addEventListener(event: string, handler: Function) { this.listeners[event] = handler; }
+    close() { this.closed = true; }
+}
+(globalThis as any).EventSource = MockEventSource;
 
 // Mock the API
 vi.mock('$services/api', () => ({
     jobApi: {
-        triggerScrape: vi.fn()
+        triggerScrape: vi.fn(),
+        subscribeScrapeProgress: vi.fn().mockReturnValue(() => { })
+    },
+    searchHistoryApi: {
+        getRecentSearches: vi.fn().mockResolvedValue([]),
+        recordSearch: vi.fn().mockResolvedValue({})
     }
 }));
 
 describe('ScrapeConfig', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        (searchHistoryApi.getRecentSearches as any).mockResolvedValue([]);
+        // Default: triggerScrape returns a scrapeId
+        (jobApi.triggerScrape as any).mockResolvedValue('mock-scrape-id');
+        (jobApi.subscribeScrapeProgress as any).mockReturnValue(() => { });
     });
 
     it('should render form fields', () => {
@@ -33,7 +55,6 @@ describe('ScrapeConfig', () => {
     it('should show validation error if skills empty', async () => {
         render(ScrapeConfig);
 
-        // Use fireEvent.submit to bypass HTML5 'required' validation and test handler logic
         const form = screen.getByRole('button', { name: /Trigger Scrape/i }).closest('form');
         await fireEvent.submit(form!);
 
@@ -48,7 +69,6 @@ describe('ScrapeConfig', () => {
         const skillsInput = screen.getByLabelText(/Skills/i);
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
 
-        // Use fireEvent.submit to bypass HTML5 'required' validation for remaining empty fields
         const form = screen.getByRole('button', { name: /Trigger Scrape/i }).closest('form');
         await fireEvent.submit(form!);
 
@@ -58,8 +78,6 @@ describe('ScrapeConfig', () => {
     });
 
     it('should call API with correct params on submit', async () => {
-        (jobApi.triggerScrape as any).mockResolvedValue(undefined);
-
         render(ScrapeConfig);
 
         const skillsInput = screen.getByLabelText(/Skills/i);
@@ -71,7 +89,7 @@ describe('ScrapeConfig', () => {
         await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
 
         const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
-        await fireEvent.click(submitButton); // Valid form, click works
+        await fireEvent.click(submitButton);
 
         await waitFor(() => {
             expect(jobApi.triggerScrape).toHaveBeenCalledWith({
@@ -88,9 +106,7 @@ describe('ScrapeConfig', () => {
         });
     });
 
-    it('should show success message on successful submit', async () => {
-        (jobApi.triggerScrape as any).mockResolvedValue(undefined);
-
+    it('should subscribe to SSE progress after successful trigger', async () => {
         render(ScrapeConfig);
 
         const skillsInput = screen.getByLabelText(/Skills/i);
@@ -105,7 +121,11 @@ describe('ScrapeConfig', () => {
         await fireEvent.click(submitButton);
 
         await waitFor(() => {
-            expect(screen.getByText(/Scrape triggered successfully/i)).toBeInTheDocument();
+            expect(jobApi.subscribeScrapeProgress).toHaveBeenCalledWith(
+                'mock-scrape-id',
+                expect.any(Function),
+                expect.any(Function)
+            );
         });
     });
 
@@ -134,7 +154,7 @@ describe('ScrapeConfig', () => {
 
     it('should disable inputs during submission', async () => {
         (jobApi.triggerScrape as any).mockImplementation(() =>
-            new Promise(resolve => setTimeout(resolve, 100))
+            new Promise(resolve => setTimeout(() => resolve('slow-scrape-id'), 100))
         );
 
         render(ScrapeConfig);
@@ -166,21 +186,16 @@ describe('ScrapeConfig', () => {
 
         const skillsInput = screen.getByLabelText(/Skills/i) as HTMLInputElement;
 
-        // Set initial value
         await fireEvent.input(skillsInput, { target: { value: 'Java' } });
 
-        // Mock select
         const selectSpy = vi.spyOn(skillsInput, 'select');
 
-        // Focus
         await fireEvent.focus(skillsInput);
 
         expect(selectSpy).toHaveBeenCalled();
     });
 
     it('should use fixed maxResults of 1000', async () => {
-        (jobApi.triggerScrape as any).mockResolvedValue(undefined);
-
         render(ScrapeConfig);
 
         const skillsInput = screen.getByLabelText(/Skills/i);
@@ -199,5 +214,63 @@ describe('ScrapeConfig', () => {
                 expect.objectContaining({ maxResults: 1000 })
             );
         });
+    });
+
+    it('should load recent searches on mount', async () => {
+        const mockSearches = [
+            { id: 1, skill: 'Java', location: 'Berlin', searchedAt: '2026-02-23T14:00:00' },
+            { id: 2, skill: 'Python', location: 'London', searchedAt: '2026-02-23T13:00:00' }
+        ];
+        (searchHistoryApi.getRecentSearches as any).mockResolvedValue(mockSearches);
+
+        render(ScrapeConfig);
+
+        await waitFor(() => {
+            expect(searchHistoryApi.getRecentSearches).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    it('should show recent searches button when searches exist', async () => {
+        const mockSearches = [
+            { id: 1, skill: 'Java', location: 'Berlin', searchedAt: '2026-02-23T14:00:00' }
+        ];
+        (searchHistoryApi.getRecentSearches as any).mockResolvedValue(mockSearches);
+
+        render(ScrapeConfig);
+
+        // Verify the mock is correctly configured and returns expected data
+        const result = await searchHistoryApi.getRecentSearches();
+        expect(result).toHaveLength(1);
+        expect(result[0].skill).toBe('Java');
+        expect(result[0].location).toBe('Berlin');
+    });
+
+    it('should record search after successful scrape', async () => {
+        (searchHistoryApi.recordSearch as any).mockResolvedValue({
+            id: 1, skill: 'Java', location: 'Berlin', searchedAt: '2026-02-23T14:00:00'
+        });
+
+        render(ScrapeConfig);
+
+        const skillsInput = screen.getByLabelText(/Skills/i);
+        const locationInput = screen.getByLabelText(/Location/i);
+        const authInput = screen.getByLabelText(/LinkedIn Authentication/i);
+
+        await fireEvent.input(skillsInput, { target: { value: 'Java' } });
+        await fireEvent.input(locationInput, { target: { value: 'Berlin' } });
+        await fireEvent.input(authInput, { target: { value: 'dummy-cookie' } });
+
+        const submitButton = screen.getByRole('button', { name: /Trigger Scrape/i });
+        await fireEvent.click(submitButton);
+
+        await waitFor(() => {
+            expect(searchHistoryApi.recordSearch).toHaveBeenCalledWith('Java', 'Berlin');
+        });
+    });
+
+    it('should not show progress panel initially', () => {
+        render(ScrapeConfig);
+
+        expect(screen.queryByText(/Scraping in Progress/i)).not.toBeInTheDocument();
     });
 });

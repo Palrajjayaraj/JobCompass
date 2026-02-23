@@ -12,7 +12,7 @@ const mockJob: Job = {
     description: 'We are looking for an experienced Java developer...',
     url: 'https://example.com/job/1',
     source: Source.LINKEDIN,
-    postedDate: '2026-02-01',
+    postedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days ago
     scrapedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
     language: 'de',
     isActive: true

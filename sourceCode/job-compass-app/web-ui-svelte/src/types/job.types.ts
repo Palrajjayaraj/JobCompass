@@ -54,3 +54,10 @@ export interface FilterState {
     sortBy: SortBy;
     daysFilter: number;
 }
+
+export interface SearchHistory {
+    id: number;
+    skill: string;
+    location: string;
+    searchedAt: string;
+}
