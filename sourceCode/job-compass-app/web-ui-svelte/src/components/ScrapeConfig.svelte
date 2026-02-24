@@ -305,19 +305,25 @@
             class="flex justify-between items-center text-xs text-gray-400 mb-1"
           >
             <span>
-              Skill {progress.skillIndex}/{progress.totalSkills}
+              Iteration {progress.skillIndex}/{progress.totalSkills}
               {#if progress.currentSkill}
                 — <span class="text-blue-300">{progress.currentSkill}</span>
+              {/if}
+              {#if progress.currentLocation}
+                in <span class="text-green-300">{progress.currentLocation}</span
+                >
               {/if}
             </span>
             <span>{Math.round(getProgressPercent())}%</span>
           </div>
         {/if}
 
-        <!-- Per-Skill Job Count -->
         {#if progress.jobsFoundForSkill > 0 && progress.status === "SKILL_COMPLETED"}
           <div class="text-xs text-emerald-400 mb-1">
             ✓ Found {progress.jobsFoundForSkill} unique jobs for "{progress.currentSkill}"
+            {#if progress.currentLocation}
+              in "{progress.currentLocation}"
+            {/if}
           </div>
         {/if}
 

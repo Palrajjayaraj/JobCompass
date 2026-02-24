@@ -10,6 +10,7 @@ export interface ScrapeProgressEvent {
     scrapeId: string;
     status: 'STARTED' | 'SCRAPING' | 'SKILL_COMPLETED' | 'PUBLISHING' | 'COMPLETED' | 'FAILED';
     currentSkill: string;
+    currentLocation: string;
     skillIndex: number;
     totalSkills: number;
     jobsFoundForSkill: number;

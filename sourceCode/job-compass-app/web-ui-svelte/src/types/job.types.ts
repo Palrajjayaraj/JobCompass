@@ -51,6 +51,7 @@ export interface FilterState {
     searchQuery: string;
     selectedSource: Source | 'all';
     selectedLanguage: string | 'all';
+    selectedCountry: string | 'all';
     sortBy: SortBy;
     daysFilter: number;
 }

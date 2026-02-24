@@ -11,6 +11,7 @@ export const filters = writable<FilterState>({
     searchQuery: '',
     selectedSource: 'all',
     selectedLanguage: 'all',
+    selectedCountry: 'all',
     sortBy: 'date',
     daysFilter: 30
 });
@@ -37,8 +38,19 @@ export const filteredJobs = derived(
         }
 
         // Filter by language
-        if ($filters.selectedLanguage !== 'all') {
+        if ($filters.selectedLanguage && $filters.selectedLanguage !== 'all') {
             result = result.filter(job => job.language === $filters.selectedLanguage);
+        }
+
+        // Filter by country
+        if ($filters.selectedCountry && $filters.selectedCountry !== 'all') {
+            const cFilter = $filters.selectedCountry.toLowerCase();
+            result = result.filter(job => {
+                if (!job.location) return false;
+                const parts = job.location.split(',').map(p => p.trim());
+                const country = parts[parts.length - 1].toLowerCase();
+                return country.includes(cFilter) || job.location.toLowerCase().includes(cFilter);
+            });
         }
 
         // Filter by days
@@ -101,6 +113,10 @@ export const jobStore = {
 
     setLanguageFilter(language: string) {
         filters.update(f => ({ ...f, selectedLanguage: language }));
+    },
+
+    setCountryFilter(country: string) {
+        filters.update(f => ({ ...f, selectedCountry: country }));
     },
 
     setSortBy(sortBy: SortBy) {

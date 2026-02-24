@@ -67,7 +67,21 @@ public class ScraperController {
         log.info("Received multi-skill scrape request [{}]: {}", scrapeId, request);
 
         List<String> skills = request.getSkills() != null ? request.getSkills() : Collections.emptyList();
-        int totalSkills = skills.isEmpty() ? 1 : skills.size();
+
+        List<String> locations = new ArrayList<>();
+        if (request.getLocation() != null && !request.getLocation().isEmpty()) {
+            locations = Arrays.stream(request.getLocation().split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(java.util.stream.Collectors.toList());
+        }
+        if (locations.isEmpty()) {
+            locations.add(""); // fallback to no location
+        }
+
+        final List<String> finalLocations = locations;
+
+        int totalIterations = (skills.isEmpty() ? 1 : skills.size()) * finalLocations.size();
 
         // Initialize event buffer BEFORE starting async work
         progressTracker.initSession(scrapeId);
@@ -79,8 +93,8 @@ public class ScraperController {
                 progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
                         .scrapeId(scrapeId)
                         .status(ScrapeProgressEvent.Status.STARTED)
-                        .totalSkills(totalSkills)
-                        .message("Scrape started for " + totalSkills + " skill(s)")
+                        .totalSkills(totalIterations)
+                        .message("Scrape started for " + totalIterations + " iteration(s)")
                         .build());
 
                 List<RawJobEvent> allResults = new ArrayList<>();
@@ -88,121 +102,141 @@ public class ScraperController {
                 int totalDuplicates = 0;
                 int totalErrors = 0;
 
-                if (skills.isEmpty()) {
-                    log.warn("No skills provided, performing general search");
-                    progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
-                            .scrapeId(scrapeId)
-                            .status(ScrapeProgressEvent.Status.SCRAPING)
-                            .currentSkill("General")
-                            .skillIndex(1)
-                            .totalSkills(1)
-                            .message("Performing general search...")
-                            .build());
+                int iterationNum = 0;
 
-                    ScrapeParameters params = ScrapeParameters.withAuthLegacy(
-                            request.getMaxJobAgeDays(),
-                            request.getMaxResults(),
-                            null,
-                            request.getLocation(),
-                            request.getAuthentication());
-                    List<RawJobEvent> results = linkedInScraper.scrapeJobs(params);
+                for (String location : finalLocations) {
+                    if (skills.isEmpty()) {
+                        iterationNum++;
+                        log.warn("No skills provided, performing general search");
+                        progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
+                                .scrapeId(scrapeId)
+                                .status(ScrapeProgressEvent.Status.SCRAPING)
+                                .currentSkill("General")
+                                .currentLocation(location)
+                                .skillIndex(iterationNum)
+                                .totalSkills(totalIterations)
+                                .message("Performing general search in "
+                                        + (location.isEmpty() ? "any location" : location) + "...")
+                                .build());
 
-                    // Deduplicate
-                    int dupsForSkill = 0;
-                    for (RawJobEvent job : results) {
-                        if (job.getUrl() != null && seenUrls.add(job.getUrl())) {
-                            allResults.add(job);
-                        } else {
-                            dupsForSkill++;
+                        ScrapeParameters params = ScrapeParameters.withAuthLegacy(
+                                request.getMaxJobAgeDays(),
+                                request.getMaxResults(),
+                                null,
+                                location,
+                                request.getAuthentication());
+                        List<RawJobEvent> results = linkedInScraper.scrapeJobs(params);
+
+                        // Deduplicate
+                        int dupsForSkill = 0;
+                        for (RawJobEvent job : results) {
+                            if (job.getUrl() != null && seenUrls.add(job.getUrl())) {
+                                allResults.add(job);
+                            } else {
+                                dupsForSkill++;
+                            }
                         }
-                    }
-                    totalDuplicates += dupsForSkill;
+                        totalDuplicates += dupsForSkill;
 
-                    progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
-                            .scrapeId(scrapeId)
-                            .status(ScrapeProgressEvent.Status.SKILL_COMPLETED)
-                            .currentSkill("General")
-                            .skillIndex(1)
-                            .totalSkills(1)
-                            .jobsFoundForSkill(results.size() - dupsForSkill)
-                            .totalJobsFound(allResults.size())
-                            .duplicateJobsSkipped(totalDuplicates)
-                            .message("General search complete: " + (results.size() - dupsForSkill) + " unique jobs ("
-                                    + dupsForSkill + " duplicates)")
-                            .build());
-                } else {
-                    for (int i = 0; i < skills.size(); i++) {
-                        String skill = skills.get(i).trim();
-                        int skillNum = i + 1;
+                        progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
+                                .scrapeId(scrapeId)
+                                .status(ScrapeProgressEvent.Status.SKILL_COMPLETED)
+                                .currentSkill("General")
+                                .currentLocation(location)
+                                .skillIndex(iterationNum)
+                                .totalSkills(totalIterations)
+                                .jobsFoundForSkill(results.size() - dupsForSkill)
+                                .totalJobsFound(allResults.size())
+                                .duplicateJobsSkipped(totalDuplicates)
+                                .message("General search in " + (location.isEmpty() ? "any location" : location)
+                                        + " complete: " + (results.size() - dupsForSkill) + " unique jobs ("
+                                        + dupsForSkill + " duplicates)")
+                                .build());
 
-                        try {
-                            // Emit SCRAPING for this skill
-                            progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
-                                    .scrapeId(scrapeId)
-                                    .status(ScrapeProgressEvent.Status.SCRAPING)
-                                    .currentSkill(skill)
-                                    .skillIndex(skillNum)
-                                    .totalSkills(totalSkills)
-                                    .totalJobsFound(allResults.size())
-                                    .duplicateJobsSkipped(totalDuplicates)
-                                    .message("Scraping \"" + skill + "\" in \"" + request.getLocation() + "\"...")
-                                    .build());
+                        if (iterationNum < totalIterations) {
+                            Thread.sleep(5000);
+                        }
+                    } else {
+                        for (int i = 0; i < skills.size(); i++) {
+                            iterationNum++;
+                            String skill = skills.get(i).trim();
 
-                            log.info("[{}] Scraping skill {}/{}: {}", scrapeId, skillNum, totalSkills, skill);
-                            ScrapeParameters params = ScrapeParameters.withAuthLegacy(
-                                    request.getMaxJobAgeDays(),
-                                    request.getMaxResults(),
-                                    skill,
-                                    request.getLocation(),
-                                    request.getAuthentication());
+                            try {
+                                // Emit SCRAPING for this skill
+                                progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
+                                        .scrapeId(scrapeId)
+                                        .status(ScrapeProgressEvent.Status.SCRAPING)
+                                        .currentSkill(skill)
+                                        .currentLocation(location)
+                                        .skillIndex(iterationNum)
+                                        .totalSkills(totalIterations)
+                                        .totalJobsFound(allResults.size())
+                                        .duplicateJobsSkipped(totalDuplicates)
+                                        .message("Scraping \"" + skill + "\" in \"" + location + "\"...")
+                                        .build());
 
-                            List<RawJobEvent> results = linkedInScraper.scrapeJobs(params);
+                                log.info("[{}] Scraping iteration {}/{}: {} in {}", scrapeId, iterationNum,
+                                        totalIterations, skill, location);
+                                ScrapeParameters params = ScrapeParameters.withAuthLegacy(
+                                        request.getMaxJobAgeDays(),
+                                        request.getMaxResults(),
+                                        skill,
+                                        location,
+                                        request.getAuthentication());
 
-                            // Deduplicate across skills
-                            int dupsForSkill = 0;
-                            for (RawJobEvent job : results) {
-                                if (job.getUrl() != null && seenUrls.add(job.getUrl())) {
-                                    allResults.add(job);
-                                } else {
-                                    dupsForSkill++;
+                                List<RawJobEvent> results = linkedInScraper.scrapeJobs(params);
+
+                                // Deduplicate across skills
+                                int dupsForSkill = 0;
+                                for (RawJobEvent job : results) {
+                                    if (job.getUrl() != null && seenUrls.add(job.getUrl())) {
+                                        allResults.add(job);
+                                    } else {
+                                        dupsForSkill++;
+                                    }
                                 }
+                                totalDuplicates += dupsForSkill;
+                                int uniqueForSkill = results.size() - dupsForSkill;
+
+                                // Emit SKILL_COMPLETED
+                                progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
+                                        .scrapeId(scrapeId)
+                                        .status(ScrapeProgressEvent.Status.SKILL_COMPLETED)
+                                        .currentSkill(skill)
+                                        .currentLocation(location)
+                                        .skillIndex(iterationNum)
+                                        .totalSkills(totalIterations)
+                                        .jobsFoundForSkill(uniqueForSkill)
+                                        .totalJobsFound(allResults.size())
+                                        .duplicateJobsSkipped(totalDuplicates)
+                                        .message("\"" + skill + "\" in \"" + location + "\" complete: " + uniqueForSkill
+                                                + " unique jobs"
+                                                + (dupsForSkill > 0 ? " (" + dupsForSkill + " duplicates skipped)"
+                                                        : ""))
+                                        .build());
+
+                                // Rate limit between iterations
+                                if (iterationNum < totalIterations) {
+                                    Thread.sleep(5000);
+                                }
+                            } catch (Exception e) {
+                                totalErrors++;
+                                log.error("[{}] Error scraping skill: {} in {}", scrapeId, skill, location, e);
+
+                                progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
+                                        .scrapeId(scrapeId)
+                                        .status(ScrapeProgressEvent.Status.SCRAPING)
+                                        .currentSkill(skill)
+                                        .currentLocation(location)
+                                        .skillIndex(iterationNum)
+                                        .totalSkills(totalIterations)
+                                        .errors(totalErrors)
+                                        .totalJobsFound(allResults.size())
+                                        .duplicateJobsSkipped(totalDuplicates)
+                                        .message("Error scraping \"" + skill + "\" in \"" + location + "\": "
+                                                + e.getMessage())
+                                        .build());
                             }
-                            totalDuplicates += dupsForSkill;
-                            int uniqueForSkill = results.size() - dupsForSkill;
-
-                            // Emit SKILL_COMPLETED
-                            progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
-                                    .scrapeId(scrapeId)
-                                    .status(ScrapeProgressEvent.Status.SKILL_COMPLETED)
-                                    .currentSkill(skill)
-                                    .skillIndex(skillNum)
-                                    .totalSkills(totalSkills)
-                                    .jobsFoundForSkill(uniqueForSkill)
-                                    .totalJobsFound(allResults.size())
-                                    .duplicateJobsSkipped(totalDuplicates)
-                                    .message("\"" + skill + "\" complete: " + uniqueForSkill + " unique jobs"
-                                            + (dupsForSkill > 0 ? " (" + dupsForSkill + " duplicates skipped)" : ""))
-                                    .build());
-
-                            // Rate limit between skills
-                            if (i < skills.size() - 1) {
-                                Thread.sleep(5000);
-                            }
-                        } catch (Exception e) {
-                            totalErrors++;
-                            log.error("[{}] Error scraping skill: {}", scrapeId, skill, e);
-
-                            progressTracker.emitProgress(scrapeId, ScrapeProgressEvent.builder()
-                                    .scrapeId(scrapeId)
-                                    .status(ScrapeProgressEvent.Status.SCRAPING)
-                                    .currentSkill(skill)
-                                    .skillIndex(skillNum)
-                                    .totalSkills(totalSkills)
-                                    .errors(totalErrors)
-                                    .totalJobsFound(allResults.size())
-                                    .duplicateJobsSkipped(totalDuplicates)
-                                    .message("Error scraping \"" + skill + "\": " + e.getMessage())
-                                    .build());
                         }
                     }
                 }
@@ -212,7 +246,7 @@ public class ScraperController {
                         .scrapeId(scrapeId)
                         .status(ScrapeProgressEvent.Status.PUBLISHING)
                         .totalJobsFound(allResults.size())
-                        .totalSkills(totalSkills)
+                        .totalSkills(totalIterations)
                         .duplicateJobsSkipped(totalDuplicates)
                         .errors(totalErrors)
                         .message("Publishing " + allResults.size() + " unique jobs to Kafka...")
@@ -226,7 +260,7 @@ public class ScraperController {
                         .scrapeId(scrapeId)
                         .status(ScrapeProgressEvent.Status.COMPLETED)
                         .totalJobsFound(allResults.size())
-                        .totalSkills(totalSkills)
+                        .totalSkills(totalIterations)
                         .duplicateJobsSkipped(totalDuplicates)
                         .errors(totalErrors)
                         .message("Scrape complete! " + allResults.size() + " unique jobs found"

@@ -34,6 +34,7 @@ public class ScrapeProgressEvent {
     private String scrapeId;
     private Status status;
     private String currentSkill;
+    private String currentLocation;
     private int skillIndex;
     private int totalSkills;
     private int jobsFoundForSkill;
