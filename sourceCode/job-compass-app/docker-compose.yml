@@ -48,7 +48,7 @@ services:
       - jobcompass-network
 
   scraper-service:
-    build: 
+    build:
       context: .
       dockerfile: scraper-service/Dockerfile
     depends_on:
@@ -88,9 +88,9 @@ services:
       - scraper-service
     ports:
       - "8085:8085"
+      - "8443:8443"
     networks:
       - jobcompass-network
-
 
 networks:
   jobcompass-network:
